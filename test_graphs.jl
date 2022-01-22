@@ -34,6 +34,7 @@ function GraphvizGraphs.to_graphviz_property_graph(f::ACSetTransformation; kw...
 end
 ##########################################################
 
+#====================James Horn Part======================#
 # Theory Graph is a premade simple graph
 to_graphviz(Catlab.Graphs.BasicGraphs.TheoryGraph)
 
@@ -70,6 +71,7 @@ judge(median(sim_gen_draw_bench_e), median(sim_gen_draw_bench_w))
 # We can see that for this simple graph example, drawing one more edge and one more vertex causes a performance
 # loss of ~16-19%. That's not to say we should concentrate efforts on Graphviz, it's just an example.
 # I would like to note that the time has reported as invariant in some cases. The memory is consistent.
+#=========================================================#
 
 # Original Doc Info - These seem unnecessary to benchmark
 ##########################################################
@@ -88,6 +90,7 @@ w[incident(w, 1, :src), :tgt] # vertices that are the target of edges whose src 
 # We can construct some graph homomorphisms between our two graphs.
 # What data do we need to specify?
 
+#====================James Horn Part======================#
 # ACSetTransformation
 ϕ = ACSetTransformation(e, w, E = [1], V = [1, 2])
 actrans_A = @benchmark ACSetTransformation($e, $w, E = [1], V = [1, 2])
@@ -131,6 +134,8 @@ ratio(median(is_nat_B), median(is_nat_B_prime))
 # From my understanding I don't think much is possible here and an analysis of the function
 # already exists on the Catlab documantation. I would like to note that the documentation (below)
 # does not reference the second for loop, nor does the code snippet.
+#=========================================================#
+
 
 # Original Doc Info - These are unnecessary to benchmark
 ##########################################################
@@ -170,6 +175,14 @@ ratio(median(is_nat_B), median(is_nat_B_prime))
 # As you saw in the previous exercise, constructing a natural transformation can be quite tedious. We want computers to automate tedious things for us. So we use an algorithm to enumerate all the homomorphisms between two CSets.
 # CSet homomorphisms f:A→B are ways of finding a part of B that is shaped like A. You can view this as pattern matching. The graph A is the pattern and the graph B is the data. A morphism f:A→B is a collection of vertices and edges in B that is shaped like A. Note that you can ask Catlab to enforce constraints on the homomorphisms it will find including computing monic (injective) morphisms by passing the keyword `monic=true`. A monic morphism into B is a subobject of B.  You can pass `iso=true` to get isomorphisms.
 
+#====================James Horn Part======================#
+# The below functions appear to have undergone efficiency consideration already.
+# The only issues they may pose would be related to recursion (specifically in homomorphims()).
+#=========================================================#
+
+# Original Doc Info - Not benchmarked but can be
+##########################################################
+
 # Graph creation
 t = @acset Graphs.Graph begin
     V = 3
@@ -177,7 +190,6 @@ t = @acset Graphs.Graph begin
     src = [1, 2, 1]
     tgt = [2, 3, 3]
 end
-
 draw(t)
 
 T = @acset Graphs.Graph begin
@@ -186,16 +198,11 @@ T = @acset Graphs.Graph begin
     src = [1, 2, 1, 3, 1, 5, 2, 2, 4]
     tgt = [2, 3, 3, 4, 4, 6, 5, 6, 6]
 end
-
 draw(T)
-
 
 # The simplest pattern in a graph is just a single edge and each homomorphism ϕ:e→G is a single edge in G. 
 length(homomorphisms(e, T, monic = true)) == nparts(T, :E) # number of edges
-
-
 length(homomorphisms(t, T))
-
 # We can define this helper function to print out all the homomorphisms between graphs. Because all our graphs are simple, we only need to look at the vertex components.
 graphhoms(g, h) = begin
     map(homomorphisms(g, h)) do ϕ
@@ -204,26 +211,19 @@ graphhoms(g, h) = begin
 end
 
 graphhoms(t, T)
-
 # Homs ϕ:t→T are little triangles in T, but homs ϕ:T→t are colorings of T with 3 colors. The fact that there are edges in t that are missing, means that it provides constraints on what graphs have morphisms into it. For example, there are no morphisms T→t.
-
 graphhoms(T, t)
-
 # The reason we don't have a morphism into t is vertices 2,3,4,5 aren't arranged into a triangle. We can relax those constraints by adding loops to the codomain. Loops in the codomain allow you to merge adjacent vertices when you construct the homomorphism. 
-
 add_loops!(g) = add_parts!(g, :E, nparts(g, :V), src = parts(g, :V), tgt = parts(g, :V))
 add_loops(g) = begin
     h = copy(g)
     add_loops!(h)
     return h
 end
-
 draw(add_loops(t))
 
 # Once we add loops, then we have morphisms.
-
 length(homomorphisms(T, add_loops(t)))
-
 
 # ## Bipartite Graphs
 # Many computer science problems involve graphs that have two types of vertices. For example, when matching students to classes, you might represent the students as one type of vertex and the classes as another type of vertex. Then the edges (s,c) represent "student s is enrolled in class c". In this scenario there can be no edges from a class vertex to another class vertex, or from a student vertex to a student vertex. Graphs for which there exists such a classification are called bipartite graphs. In Category Theory, we shift from thinking about graphs with properties to graph homomorphisms that witness that property and think of bipartitioned graphs.
@@ -244,22 +244,13 @@ end
 draw(id(esym))
 # There are two ways to bipartition sq.
 graphhoms(sq, esym)
-
 # This comes from the fact that esym has 2 automorphisms!
 graphhoms(esym, esym)
-
 # the first coloring
 draw(homomorphisms(sq, esym)[1])
-
 # but we can also swap the roles of the colors
 draw(homomorphisms(sq, esym)[2])
-
-# ### Exercise:
-# 1. Construct a graph representation of a checkerboard
-# 2. Draw the two bipartitions of the checkerboard
-
 # We can generalize the notion of Bipartite graph to any number of parts. I like to call Kₖ the k-coloring classifier because homomorphims into α:G → Kₖ are k-colorings of G.
-
 clique(k::Int) = begin
     Kₖ = Graphs.Graph(k)
     for i in 1:k
@@ -271,21 +262,12 @@ clique(k::Int) = begin
     end
     return Kₖ
 end
-
 K₃ = clique(3)
 draw(id(K₃))
-
 # Our graph T is not 2-colorable,
 length(homomorphisms(T, esym))
-
 # but we can use 3 colors to color T.
 draw(homomorphism(T, K₃))
-
-# ### Exercise:
-# 1. Find a graph that is not 3-colorable
-# 2. Find a graph that is not 4-colorable
-
-
 # ## Homomorphisms in [C, Set] are like Types
 # Any graph can play the role of the codomain. If you pick a graph that is incomplete, you get a more constrained notion of coloring where there are color combinations that are forbidden.
 triloop = @acset Graphs.Graph begin
@@ -294,9 +276,7 @@ triloop = @acset Graphs.Graph begin
     src = [1, 2, 3]
     tgt = [2, 3, 1]
 end
-
 draw(id(triloop))
-
 # With this graph, we can pick out directed 3-cycles in a graph like T2,
 T2 = @acset Graphs.Graph begin
     V = 6
@@ -305,10 +285,8 @@ T2 = @acset Graphs.Graph begin
     tgt = [2, 3, 1, 5, 6, 4]
 end
 graphhoms(T2, triloop)
-
 # and we can draw those cyclic roles with colors
 draw(homomorphisms(T2, triloop)[1])
-
 T3 = @acset Graphs.Graph begin
     V = 6
     E = 7
@@ -316,9 +294,8 @@ T3 = @acset Graphs.Graph begin
     tgt = [2, 3, 1, 5, 6, 4, 4]
 end
 graphhoms(T3, triloop)
-
 # Using the colors as shown:
 draw(id(triloop))
-
 # We can see our coloring of T3:
 draw(homomorphisms(T3, triloop)[1])
+##########################################################
