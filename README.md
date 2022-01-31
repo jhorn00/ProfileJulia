@@ -1,5 +1,5 @@
 # ProfileJulia
-Julia profiling ~~library~~ and Catlab.jl optimization work.  
+Julia profiling and Catlab.jl optimization work.  
   
 **Analysis**  
 Files investigating graph functionality (for now, will expand soon).  
