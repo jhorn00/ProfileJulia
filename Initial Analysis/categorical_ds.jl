@@ -84,4 +84,33 @@ ratio(median(j3), median(j2))
 
 # Functions:
 # Homs
-# More to come
+# What else?
+
+from = @acset Graphs.Graph begin
+    V = 4
+    E = 5
+    src = [1, 1, 1, 2, 3]
+    tgt = [2, 3, 4, 4, 4]
+end
+
+to = @acset Graphs.Graph begin
+    V = 6
+    E = 9
+    src = [1, 1, 1, 2, 3, 3, 3, 4, 5]
+    tgt = [2, 3, 4, 4, 4, 5, 6, 6, 6]
+end
+
+length(homomorphisms(from, to))
+
+# Edge list
+e1 = EdgeList(4, 5, [1, 1, 1, 2, 3], [2, 3, 4, 4, 4])
+e2 = EdgeList(6, 9, [1, 1, 1, 2, 3, 3, 3, 4, 5], [2, 3, 4, 4, 4, 5, 6, 6, 6])
+function naiveHomCount(from, to)
+    # cases where they all map to the same vertex
+    sum = to.vertices
+    for i in 1:from.vertices
+        
+    end
+end
+
+naiveHomCount(e1, e2)
