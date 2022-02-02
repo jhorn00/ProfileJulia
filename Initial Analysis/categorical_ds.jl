@@ -100,16 +100,41 @@ to = @acset Graphs.Graph begin
     tgt = [2, 3, 4, 4, 4, 5, 6, 6, 6]
 end
 
-length(homomorphisms(from, to))
+add_loops!(g) = add_parts!(g, :E, nparts(g, :V), src = parts(g, :V), tgt = parts(g, :V))
+add_loops(g) = begin
+    h = copy(g)
+    add_loops!(h)
+    return h
+end
+length(homomorphisms(from, add_loops(to)))
 
 # Edge list
 e1 = EdgeList(4, 5, [1, 1, 1, 2, 3], [2, 3, 4, 4, 4])
 e2 = EdgeList(6, 9, [1, 1, 1, 2, 3, 3, 3, 4, 5], [2, 3, 4, 4, 4, 5, 6, 6, 6])
+# recursive function to see if a source will eventually lead to a target
+function leadsTo(graph, src, tgt)
+    if src ==  tgt
+        return true
+    end
+    for i in 1:length(graph.src)
+        if graph.src[i] == src
+            if leadsTo(graph, graph.tgt[i], tgt)
+                return true
+            end
+        end
+    end
+    return false
+end
+
 function naiveHomCount(from, to)
-    # cases where they all map to the same vertex
-    sum = to.vertices
-    for i in 1:from.vertices
-        
+    sum = 0
+    for i in 1:to.vertices
+        for j in 1:from.vertices
+            valid = true
+            for k in 1:from.vertices - 1
+                
+            end
+        end
     end
 end
 
