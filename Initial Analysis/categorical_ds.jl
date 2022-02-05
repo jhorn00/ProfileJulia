@@ -2,7 +2,29 @@ using BenchmarkTools
 using Catlab, Catlab.Theories
 using Catlab.CategoricalAlgebra
 using Catlab.Graphs
+using Catlab.Graphics
+using Catlab.Graphics.Graphviz
+using Colors
+draw(g) = to_graphviz(g, node_labels = true, edge_labels = true)
 
+GraphvizGraphs.to_graphviz(f::ACSetTransformation; kw...) =
+    to_graphviz(GraphvizGraphs.to_graphviz_property_graph(f; kw...))
+
+function GraphvizGraphs.to_graphviz_property_graph(f::ACSetTransformation; kw...)
+    pg = GraphvizGraphs.to_graphviz_property_graph(dom(f); kw...)
+    vcolors = hex.(range(colorant"#0021A5", stop = colorant"#FA4616", length = nparts(codom(f), :V)))
+    ecolors = hex.(range(colorant"#6C9AC3", stop = colorant"#E28F41", length = nparts(codom(f), :E)))
+    hex.(colormap("Oranges", nparts(codom(f), :V)))
+    for v in vertices(dom(f))
+        fv = f[:V](v)
+        set_vprops!(pg, v, Dict(:color => "#$(vcolors[fv])"))
+    end
+    for e in edges(dom(f))
+        fe = f[:E](e)
+        set_eprops!(pg, e, Dict(:color => "#$(ecolors[fe])"))
+    end
+    pg
+end
 # The initial test case here will involve a simple directed graph 1 -> 2
 
 # Traditional Julia graph generation
@@ -84,7 +106,10 @@ ratio(median(j3), median(j2))
 
 # Functions:
 # Homs
-# What else?
+
+#################### Focus Change - Homomorphism Analysis ####################
+
+######should take a look at difference on performance based on diff graphs
 
 from = @acset Graphs.Graph begin
     V = 4
@@ -106,36 +131,26 @@ add_loops(g) = begin
     add_loops!(h)
     return h
 end
-length(homomorphisms(from, add_loops(to)))
+to_loop = add_loops(to)
 
-# Edge list
-e1 = EdgeList(4, 5, [1, 1, 1, 2, 3], [2, 3, 4, 4, 4])
-e2 = EdgeList(6, 9, [1, 1, 1, 2, 3, 3, 3, 4, 5], [2, 3, 4, 4, 4, 5, 6, 6, 6])
-# recursive function to see if a source will eventually lead to a target
-function leadsTo(graph, src, tgt)
-    if src ==  tgt
-        return true
-    end
-    for i in 1:length(graph.src)
-        if graph.src[i] == src
-            if leadsTo(graph, graph.tgt[i], tgt)
-                return true
-            end
-        end
-    end
-    return false
-end
+# Initial graph homomorphism information
+len = length(homomorphisms(from, to_loop))
+hom = homomorphisms(from, to_loop)
+draw(from)
+draw(to_loop)
+draw(hom[1])
 
-function naiveHomCount(from, to)
-    sum = 0
-    for i in 1:to.vertices
-        for j in 1:from.vertices
-            valid = true
-            for k in 1:from.vertices - 1
-                
-            end
-        end
-    end
-end
+# Homomorphism benchmark using test graphs
+hom1 = @benchmark homomorphisms(from, to_loop)
 
-naiveHomCount(e1, e2)
+# Double check that it will perform similarly (it should, but checking anyway)
+hom2 = @benchmark homomorphisms($from, $to_loop)
+
+# This will allow a better look at the breakdown of individual functions
+using TimerOutputs
+tmr = TimerOutput()
+
+homomorphisms(from, to_loop)
+show(tmr)
+
+
