@@ -171,20 +171,7 @@ co_sparse_to2 = add_loops(sparse_to2)
 
 
 # Small Graph Testing
-#injective
-# The one below this takes super long despite being smaller for homomorphims.
-# I'm not sure if it is just that much harder to calculate or if it is a bug.
-# Could just be the calcultions, since I think I saw some other injective homs
-# take a bit longer than their surjective counterparts.
-#sparse_injection = homomorphisms(sparse_from, co_sparse_to)
-small_sparse_inj = @benchmark homomorphism(sparse_from, co_sparse_to)
-small_sparse_inj2 = @benchmark homomorphism(sparse_from2, co_sparse_to2)
 
-
-#surjective
-#sparse_surjection = homomorphisms(sparse_to, co_sparse_from)
-small_sparse_sur = @benchmark homomorphism(sparse_to, co_sparse_from)
-small_sparse_sur2 = @benchmark homomorphism(sparse_to2, co_sparse_from2)
 
 # Large Graph Testing
 sparse_from_large = sparse_from = apex(product(sparse_from, sparse_from))
@@ -197,24 +184,6 @@ co_sparse_from2 = add_loops(sparse_from2)
 sparse_to_large2 = sparse_to2 = apex(product(sparse_to2, sparse_to2))
 co_sparse_to2 = add_loops(sparse_to2)
 
-#injection
-sparse_injection = homomorphism(sparse_from, co_sparse_to)
-large_sparse_inj = @benchmark homomorphism(sparse_from, co_sparse_to)
-
-large_sparse_inj2 = @benchmark homomorphism(sparse_from2, co_sparse_to2)
-
-#surjection
-sparse_surjection = homomorphism(sparse_from, co_sparse_to)
-large_sparse_sur = @benchmark homomorphism(sparse_to, co_sparse_from)
-
-large_sparse_sur2 = @benchmark homomorphism(sparse_to2, co_sparse_from2)
-
-ratio(median(small_sparse_inj), median(small_sparse_sur))
-ratio(median(large_sparse_inj), median(large_sparse_sur))
-# calculate the growth^^^^^ dont be lazy
-ratio(median(small_sparse_inj), median(large_sparse_inj))
-ratio(median(small_sparse_sur), median(large_sparse_sur))
-
 # Larger Graph Testing
 sparse_from_larger = sparse_from = apex(product(sparse_from, sparse_from_base))
 co_sparse_from = add_loops(sparse_from)
@@ -225,23 +194,6 @@ sparse_from_larger2 = sparse_from2 = apex(product(sparse_from2, sparse_from_base
 co_sparse_from2 = add_loops(sparse_from2)
 sparse_to_larger2 = sparse_to2 = apex(product(sparse_to2, sparse_to_base2))
 co_sparse_to2 = add_loops(sparse_to2)
-
-#injection
-sparse_injection = homomorphism(sparse_from, co_sparse_to)
-larger_sparse_inj = @benchmark homomorphism(sparse_from, co_sparse_to)
-
-larger_sparse_inj2 = @benchmark homomorphism(sparse_from2, co_sparse_to2)
-
-#surjection
-sparse_surjection = homomorphism(sparse_from, co_sparse_to)
-larger_sparse_sur = @benchmark homomorphism(sparse_to, co_sparse_from)
-
-larger_sparse_sur2 = @benchmark homomorphism(sparse_to2, co_sparse_from2)
-
-ratio(median(larger_sparse_inj), median(larger_sparse_sur))
-# calculate the growth^^^^^ dont be lazy
-ratio(median(large_sparse_inj), median(larger_sparse_inj))
-ratio(median(large_sparse_sur), median(larger_sparse_sur))
 
 # Sparse Plots - Vertices
 x1 = [length(vertices(sparse_from_base)), length(vertices(sparse_from_large)), length(vertices(sparse_from_larger)), length(vertices(sparse_from_base2)), length(vertices(sparse_from_large2)), length(vertices(sparse_from_larger2))]
