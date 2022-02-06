@@ -63,7 +63,7 @@ function autoPlot(fromList, toList)
     x3 = Int64[]
     x4 = Int64[]
     for i in 1:length(fromList)
-        print("Graph pair $i: ")
+        print("Graph pair $i:   ")
         f = fromList[i]
         t = toList[i]
         #injection
@@ -76,6 +76,41 @@ function autoPlot(fromList, toList)
         append!(x2, length(vertices(t)))
         append!(x4, length(edges(t)))
         print("Surjection complete.\n")
+    end
+    scatter([x1, x2], [y1, y2], title = "Autoplotted Graph Vertices", xlabel = "Number of \"From\" Vertices", ylabel = "Single Hom Calculation Time (ns)", label = ["Injective" "Surjective"])
+    savefig("autoVertex.png")
+    scatter([x3, x4], [y1, y2], title = "Autoplotted Graph Edges", xlabel = "Number of Edges", ylabel = "Single Hom Calculation Time (ns)", label = ["Injective" "Surjective"])
+    savefig("autoEdge.png")
+end
+
+# This checks every possible pair. Injection/Surjection isn't an accurate description for most
+# pairs, but the data is still useful.
+function autoPlotAll(fromList, toList)
+    println("Autoplotting Homs...\nTotal pairs: $(length(toList) * length(toList))")
+    x1 = Int64[]
+    y1 = Float64[]
+    x2 = Int64[]
+    y2 = Float64[]
+    x3 = Int64[]
+    x4 = Int64[]
+    count = 1
+    for i in 1:length(fromList)
+        f = fromList[i]
+        for j in 1:length(toList)
+            print("Graph pair $count:   ")
+            t = toList[j]
+            #injection
+            append!(y1, time(median(@benchmark homomorphism($f, add_loops($t)))))
+            append!(x1, length(vertices(f)))
+            append!(x3, length(edges(t)))
+            print("Injection complete.   ")
+            #surjection
+            append!(y2, time(median(@benchmark homomorphism($t, add_loops($f)))))
+            append!(x2, length(vertices(t)))
+            append!(x4, length(edges(t)))
+            print("Surjection complete.\n")
+            count = count + 1
+        end
     end
     scatter([x1, x2], [y1, y2], title = "Autoplotted Graph Vertices", xlabel = "Number of \"From\" Vertices", ylabel = "Single Hom Calculation Time (ns)", label = ["Injective" "Surjective"])
     savefig("autoVertex.png")
@@ -227,8 +262,9 @@ savefig("edge_inj_sur_homs.png")
 #autoPlot
 fromList = [sparse_from_base, sparse_from_base2, sparse_from_large, sparse_from_large2, sparse_from_larger, sparse_from_larger2]
 toList = [sparse_to_base, sparse_to_base2, sparse_to_large, sparse_to_large2, sparse_to_larger, sparse_to_larger2]
-autoPlot(fromList, toList)
 
+@time autoPlot(fromList, toList)
+autoPlotAll(fromList, toList)
 
 
 
