@@ -164,16 +164,54 @@ sparse_to_base2 = sparse_to2 = @acset Graphs.Graph begin
 end
 draw(sparse_to2)
 
+sparse_from_base3 = sparse_from3 = @acset Graphs.Graph begin
+    V = 2
+    E = 1
+    src = [1]
+    tgt = [2]
+end
+draw(sparse_from3)
+
+sparse_to_base3 = sparse_to3 = @acset Graphs.Graph begin
+    V = 4
+    E = 3
+    src = [1, 2, 3]
+    tgt = [2, 3, 4]
+end
+draw(sparse_to3)
+
+sparse_from_base4 = sparse_from4 = @acset Graphs.Graph begin
+    V = 5
+    E = 5
+    src = [1, 1, 2, 3, 4]
+    tgt = [3, 5, 5, 5, 5]
+end
+draw(sparse_from4)
+
+sparse_to_base4 = sparse_to4 = @acset Graphs.Graph begin
+    V = 7
+    E = 7
+    src = [1, 3, 4, 5, 6, 6, 7]
+    tgt = [4, 1, 2, 3, 3, 4, 2]
+end
+draw(sparse_to4)
+
+# Notably, all of the above are acyclic
+
+# Small Graph Formation
 co_sparse_from = add_loops(sparse_from)
 co_sparse_to = add_loops(sparse_to)
+
 co_sparse_from2 = add_loops(sparse_from2)
 co_sparse_to2 = add_loops(sparse_to2)
 
+co_sparse_from3 = add_loops(sparse_from3)
+co_sparse_to3 = add_loops(sparse_to3)
 
-# Small Graph Testing
+co_sparse_from4 = add_loops(sparse_from4)
+co_sparse_to4 = add_loops(sparse_to4)
 
-
-# Large Graph Testing
+# Large Graph Formation
 sparse_from_large = sparse_from = apex(product(sparse_from, sparse_from))
 co_sparse_from = add_loops(sparse_from)
 sparse_to_large = sparse_to = apex(product(sparse_to, sparse_to))
@@ -184,6 +222,15 @@ co_sparse_from2 = add_loops(sparse_from2)
 sparse_to_large2 = sparse_to2 = apex(product(sparse_to2, sparse_to2))
 co_sparse_to2 = add_loops(sparse_to2)
 
+sparse_from_large3 = sparse_from3 = apex(product(sparse_from3, sparse_from3))
+co_sparse_from3 = add_loops(sparse_from3)
+sparse_to_large3 = sparse_to3 = apex(product(sparse_to3, sparse_to3))
+co_sparse_to3 = add_loops(sparse_to3)
+
+sparse_from_large4 = sparse_from4 = apex(product(sparse_from4, sparse_from4))
+co_sparse_from4 = add_loops(sparse_from4)
+sparse_to_large4 = sparse_to4 = apex(product(sparse_to4, sparse_to4))
+co_sparse_to4 = add_loops(sparse_to4)
 # Larger Graph Testing
 sparse_from_larger = sparse_from = apex(product(sparse_from, sparse_from_base))
 co_sparse_from = add_loops(sparse_from)
@@ -195,28 +242,26 @@ co_sparse_from2 = add_loops(sparse_from2)
 sparse_to_larger2 = sparse_to2 = apex(product(sparse_to2, sparse_to_base2))
 co_sparse_to2 = add_loops(sparse_to2)
 
-# Sparse Plots - Vertices
-x1 = [length(vertices(sparse_from_base)), length(vertices(sparse_from_large)), length(vertices(sparse_from_larger)), length(vertices(sparse_from_base2)), length(vertices(sparse_from_large2)), length(vertices(sparse_from_larger2))]
-y1 = [time(median(small_sparse_inj)), time(median(large_sparse_inj)), time(median(larger_sparse_inj)), time(median(small_sparse_inj2)), time(median(large_sparse_inj2)), time(median(larger_sparse_inj2))] # should be in nanoseconds
-x2 = [length(vertices(sparse_to_base)), length(vertices(sparse_to_large)), length(vertices(sparse_to_larger)), length(vertices(sparse_to_base2)), length(vertices(sparse_to_large2)), length(vertices(sparse_to_larger2))]
-y2 = [time(median(small_sparse_sur)), time(median(large_sparse_sur)), time(median(larger_sparse_sur)), time(median(small_sparse_sur2)), time(median(large_sparse_sur2)), time(median(larger_sparse_sur2))]
-scatter([x1, x2], [y1, y2], title = "Sparse Graph Vertices", xlabel = "Number of \"From\" Vertices", ylabel = "Single Hom Calculation Time (ns)", label = ["Injective" "Surjective"])
-savefig("vertex_inj_sur_homs.png")
+sparse_from_larger3 = sparse_from3 = apex(product(sparse_from3, sparse_from_base3))
+co_sparse_from3 = add_loops(sparse_from3)
+sparse_to_larger3 = sparse_to3 = apex(product(sparse_to3, sparse_to_base3))
+co_sparse_to3 = add_loops(sparse_to3)
 
-# Sparse Plots - Edges <-- Will be similar to the vertices given the nature of sparse graphs.
-x1 = [length(edges(sparse_from_base)), length(edges(sparse_from_large)), length(edges(sparse_from_larger))]
-y1 = [time(median(small_sparse_inj)), time(median(large_sparse_inj)), time(median(larger_sparse_inj))] # should be in nanoseconds
-x2 = [length(edges(sparse_to_base)), length(edges(sparse_to_large)), length(edges(sparse_to_larger))]
-y2 = [time(median(small_sparse_sur)), time(median(large_sparse_sur)), time(median(larger_sparse_sur))]
-scatter([x1, x2], [y1, y2], title = "Sparse Graph Edges", xlabel = "Number of Edges", ylabel = "Single Hom Calculation Time (ns)", label = ["Injective" "Surjective"])
-savefig("edge_inj_sur_homs.png")
+sparse_from_larger4 = sparse_from4 = apex(product(sparse_from4, sparse_from_base4))
+co_sparse_from4 = add_loops(sparse_from4)
+sparse_to_larger4 = sparse_to4 = apex(product(sparse_to4, sparse_to_base4))
+co_sparse_to4 = add_loops(sparse_to4)
 
 #autoPlot
-fromList = [sparse_from_base, sparse_from_base2, sparse_from_large, sparse_from_large2, sparse_from_larger, sparse_from_larger2]
-toList = [sparse_to_base, sparse_to_base2, sparse_to_large, sparse_to_large2, sparse_to_larger, sparse_to_larger2]
+# copy/paste helper:
+# sparse_from_base, sparse_from_large, sparse_from_larger
+# sparse_to_base, sparse_to_large, sparse_to_larger
+fromList = [sparse_from_base, sparse_from_base2, sparse_from_large, sparse_from_large2, sparse_from_larger, sparse_from_larger2, sparse_from_base3, sparse_from_large3, sparse_from_larger3, sparse_from_base4, sparse_from_large4, sparse_from_larger4]
+toList = [sparse_to_base, sparse_to_base2, sparse_to_large, sparse_to_large2, sparse_to_larger, sparse_to_larger2, sparse_to_base3, sparse_to_large3, sparse_to_larger3, sparse_to_base4, sparse_to_large4, sparse_to_larger4]
 
-@time autoPlot(fromList, toList)
-autoPlotAll(fromList, toList)
+autoPlot(fromList, toList)
+# comment out so it isn't run accidentally
+# autoPlotAll(fromList, toList)
 
 
 

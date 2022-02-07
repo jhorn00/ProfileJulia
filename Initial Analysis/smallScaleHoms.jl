@@ -91,3 +91,20 @@ ratio(median(larger_sparse_inj), median(larger_sparse_sur))
 # calculate the growth^^^^^ dont be lazy
 ratio(median(large_sparse_inj), median(larger_sparse_inj))
 ratio(median(large_sparse_sur), median(larger_sparse_sur))
+
+
+# Sparse Plots - Vertices
+x1 = [length(vertices(sparse_from_base)), length(vertices(sparse_from_large)), length(vertices(sparse_from_larger)), length(vertices(sparse_from_base2)), length(vertices(sparse_from_large2)), length(vertices(sparse_from_larger2))]
+y1 = [time(median(small_sparse_inj)), time(median(large_sparse_inj)), time(median(larger_sparse_inj)), time(median(small_sparse_inj2)), time(median(large_sparse_inj2)), time(median(larger_sparse_inj2))] # should be in nanoseconds
+x2 = [length(vertices(sparse_to_base)), length(vertices(sparse_to_large)), length(vertices(sparse_to_larger)), length(vertices(sparse_to_base2)), length(vertices(sparse_to_large2)), length(vertices(sparse_to_larger2))]
+y2 = [time(median(small_sparse_sur)), time(median(large_sparse_sur)), time(median(larger_sparse_sur)), time(median(small_sparse_sur2)), time(median(large_sparse_sur2)), time(median(larger_sparse_sur2))]
+scatter([x1, x2], [y1, y2], title = "Sparse Graph Vertices", xlabel = "Number of \"From\" Vertices", ylabel = "Single Hom Calculation Time (ns)", label = ["Injective" "Surjective"])
+savefig("vertex_inj_sur_homs.png")
+
+# Sparse Plots - Edges <-- Will be similar to the vertices given the nature of sparse graphs.
+x1 = [length(edges(sparse_from_base)), length(edges(sparse_from_large)), length(edges(sparse_from_larger))]
+y1 = [time(median(small_sparse_inj)), time(median(large_sparse_inj)), time(median(larger_sparse_inj))] # should be in nanoseconds
+x2 = [length(edges(sparse_to_base)), length(edges(sparse_to_large)), length(edges(sparse_to_larger))]
+y2 = [time(median(small_sparse_sur)), time(median(large_sparse_sur)), time(median(larger_sparse_sur))]
+scatter([x1, x2], [y1, y2], title = "Sparse Graph Edges", xlabel = "Number of Edges", ylabel = "Single Hom Calculation Time (ns)", label = ["Injective" "Surjective"])
+savefig("edge_inj_sur_homs.png")
