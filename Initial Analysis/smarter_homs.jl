@@ -40,13 +40,20 @@ toList = [a_sparse_to, a_sparse_to2, a_sparse_to3, a_sparse_to4, a_sparse_to5, a
 # autoGens() Demonstration: It takes two lists of the same size and
 # appends expanded graphs to them such that they will remain the same size.
 # It returns nothing.
-autoGens(fromList, toList, 500, 500)
+#autoGens(fromList, toList, 500, 500)
 #autoShuffle(fromList, toList, 1500, 1500)
 #autoShuffle(fromList, toList, 500, 500)
 #autoShuffle(fromList, toList, 500, 500)
-lightShuffle(fromList, toList, 500, 500, 10)
-lightShuffle(fromList, toList, 500, 500, 10)
-lightShuffle(fromList, toList, 500, 500, 10)
+#lightShuffle(fromList, toList, 500, 500, 10)
+#lightShuffle(fromList, toList, 500, 500, 10)
+#lightShuffle(fromList, toList, 500, 500, 10)
+#autoGens(fromList, toList, 500, 500)
+#lightShuffle(fromList, toList, 500, 500, 10)
+autoGens(fromList, toList, 300, 300)
+autoGens(fromList, toList, 300, 300)
+for i in 1:2
+    autoShuffle(fromList, toList, 300, 300)
+end
 length(fromList)
 length(toList)
 

@@ -70,9 +70,9 @@ function quickPlot(fromList, toList)
         append!(x1, length(vertices(f)))
         append!(x3, length(edges(t)))
     end
-    scatter([x1], [y1], title = "Autoplotted Graph Vertices", xlabel = "Number of \"From\" Vertices", ylabel = "Single Hom Calculation Time (ns)")
+    scatter([x1], [y1], title = "Autoplotted Graph Vertices", xlabel = "Number of \"From\" Vertices", ylabel = "Single Hom Calculation Time (sec)")
     savefig("autoVertex.png")
-    scatter([x3], [y1], title = "Autoplotted Graph Edges", xlabel = "Number of Edges", ylabel = "Single Hom Calculation Time (ns)")
+    scatter([x3], [y1], title = "Autoplotted Graph Edges", xlabel = "Number of Edges", ylabel = "Single Hom Calculation Time (sec)")
     savefig("autoEdge.png")
 end
 
