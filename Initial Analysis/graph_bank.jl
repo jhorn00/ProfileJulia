@@ -87,3 +87,47 @@ a_complete_to = @acset Graphs.Graph begin
     src = [1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 4, 4, 5]
     tgt = [2, 3, 4, 5, 6, 3, 4, 5, 6, 4, 5, 6, 5, 6, 6]
 end
+
+# directional checkerboarding
+directional_box = @acset Graphs.Graph begin
+    V = 4
+    E = 4
+    src = [1, 1, 2, 3]
+    tgt = [2, 3, 4, 4]
+end
+
+directional_2x2 = @acset Graphs.Graph begin
+    V = 9
+    E = 12
+    src = [1, 1, 2, 2, 3, 4, 4, 5, 5, 6, 7, 8]
+    tgt = [2, 4, 3, 5, 6, 5, 7, 6, 8, 9, 8, 9]
+end
+
+# linear graphs
+line_two = @acset Graphs.Graph begin
+    V = 2
+    E = 1
+    src = [1]
+    tgt = [2]
+end
+
+line_four = @acset Graphs.Graph begin
+    V = 4
+    E = 3
+    src = [1, 2, 3]
+    tgt = [2, 3, 4]
+end
+
+line_six = @acset Graphs.Graph begin
+    V = 6
+    E = 5
+    src = [1, 2, 3, 4, 5]
+    tgt = [2, 3, 4, 5, 6]
+end
+
+line_eight = @acset Graphs.Graph begin
+    V = 8
+    E = 7
+    src = [1, 2, 3, 4, 5, 6, 7]
+    tgt = [2, 3, 4, 5, 6, 7, 8]
+end

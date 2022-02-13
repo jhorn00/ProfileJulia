@@ -259,7 +259,7 @@ co_sparse_to4 = add_loops(sparse_to4)
 fromList = [sparse_from_base, sparse_from_base2, sparse_from_large, sparse_from_large2, sparse_from_larger, sparse_from_larger2, sparse_from_base3, sparse_from_large3, sparse_from_larger3, sparse_from_base4, sparse_from_large4, sparse_from_larger4]
 toList = [sparse_to_base, sparse_to_base2, sparse_to_large, sparse_to_large2, sparse_to_larger, sparse_to_larger2, sparse_to_base3, sparse_to_large3, sparse_to_larger3, sparse_to_base4, sparse_to_large4, sparse_to_larger4]
 
-autoPlot(fromList, toList)
+# autoPlot(fromList, toList)
 # comment out so it isn't run accidentally
 # autoPlotAll(fromList, toList)
 
