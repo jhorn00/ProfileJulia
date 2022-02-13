@@ -12,4 +12,5 @@ Reference material for benchmarking tools and Catlab documentation.
 https://arxiv.org/pdf/2106.04703.pdf  
 https://github.com/AlgebraicJulia/Catlab.jl  
 https://algebraicjulia.github.io/Catlab.jl/dev/  
+https://github.com/JuliaCI/BenchmarkTools.jl  
 https://github.com/KristofferC/TimerOutputs.jl  
