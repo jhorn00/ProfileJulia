@@ -111,11 +111,25 @@ line_two = @acset Graphs.Graph begin
     tgt = [2]
 end
 
+line_three = @acset Graphs.Graph begin
+    V = 3
+    E = 2
+    src = [1, 2]
+    tgt = [2, 3]
+end
+
 line_four = @acset Graphs.Graph begin
     V = 4
     E = 3
     src = [1, 2, 3]
     tgt = [2, 3, 4]
+end
+
+line_five = @acset Graphs.Graph begin
+    V = 5
+    E = 4
+    src = [1, 2, 3, 4]
+    tgt = [2, 3, 4, 5]
 end
 
 line_six = @acset Graphs.Graph begin
@@ -125,9 +139,66 @@ line_six = @acset Graphs.Graph begin
     tgt = [2, 3, 4, 5, 6]
 end
 
+line_seven = @acset Graphs.Graph begin
+    V = 7
+    E = 6
+    src = [1, 2, 3, 4, 5, 6]
+    tgt = [2, 3, 4, 5, 6, 7]
+end
+
 line_eight = @acset Graphs.Graph begin
     V = 8
     E = 7
     src = [1, 2, 3, 4, 5, 6, 7]
     tgt = [2, 3, 4, 5, 6, 7, 8]
+end
+
+#undirected path graphs (can be used to generate lattice/grid graphs)
+u_line_two = @acset Graphs.Graph begin
+    V = 2
+    E = 2
+    src = [1, 2]
+    tgt = [2, 1]
+end
+
+u_line_three = @acset Graphs.Graph begin
+    V = 3
+    E = 4
+    src = [1, 2, 2, 3]
+    tgt = [2, 3, 1, 2]
+end
+
+u_line_four = @acset Graphs.Graph begin
+    V = 4
+    E = 6
+    src = [1, 2, 3, 2, 3, 4]
+    tgt = [2, 3, 4, 1, 2, 3]
+end
+
+u_line_five = @acset Graphs.Graph begin
+    V = 5
+    E = 8
+    src = [1, 2, 3, 4, 2, 3, 4, 5]
+    tgt = [2, 3, 4, 5, 1, 2, 3, 4]
+end
+
+u_line_six = @acset Graphs.Graph begin
+    V = 6
+    E = 10
+    src = [1, 2, 3, 4, 5, 2, 3, 4, 5, 6]
+    tgt = [2, 3, 4, 5, 6, 1, 2, 3, 4, 5]
+end
+
+u_line_seven = @acset Graphs.Graph begin
+    V = 7
+    E = 12
+    src = [1, 2, 3, 4, 5, 6, 2, 3, 4, 5, 6, 7]
+    tgt = [2, 3, 4, 5, 6, 7, 1, 2, 3, 4, 5, 6]
+end
+
+u_line_eight = @acset Graphs.Graph begin
+    V = 8
+    E = 14
+    src = [1, 2, 3, 4, 5, 6, 7, 2, 3, 4, 5, 6, 7, 8]
+    tgt = [2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7]
 end

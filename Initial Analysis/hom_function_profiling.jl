@@ -30,38 +30,7 @@ include("autoplot.jl")
 include("graph_bank.jl")
 ################################### Run the above code ###################################
 
-
-
-
-# necessary structs
-
-# struct SchemaDescType{obs,homs,attrtypes,attrs,doms,codoms}
-# end
-
-
-
-# struct BacktrackingState{S <: SchemaDescType,
-#     Assign <: NamedTuple, PartialAssign <: NamedTuple,
-#     Dom <: StructACSet{S}, Codom <: StructACSet{S}}
-#   """ The current assignment, a partially-defined homomorphism of ACSets. """
-#   assignment::Assign
-#   """ Depth in search tree at which assignments were made. """
-#   assignment_depth::Assign
-#   """ Inverse assignment for monic components or if finding a monomorphism. """
-#   inv_assignment::PartialAssign
-#   """ Domain ACSet: the "variables" in the CSP. """
-#   dom::Dom
-#   """ Codomain ACSet: the "values" in the CSP. """
-#   codom::Codom
-# end
-
-
-
-
-
-
-
-# homomorphisms
+# homomorphisms imports
 import Catlab.CategoricalAlgebra.CSets: homomorphisms
 import Catlab.CategoricalAlgebra.CSets: backtracking_search
 import Catlab.CategoricalAlgebra.CSets: map_components
@@ -73,21 +42,23 @@ const to = TimerOutput()
 function homomorphism(X::StructACSet, Y::StructACSet; kw...)
     @timeit to "Homomorphism(): result initilialization" result = nothing
     @timeit to "Homomorphism(): homs calls" homomorphisms(X, Y; kw...) do α
-      @timeit to "Homomorphism(): result assignment" result = α; return true
+        @timeit to "Homomorphism(): result assignment" result = α
+        return true
     end
     result
-  end
+end
 
 
 # it uses two homomorphisms functions
-function homomorphisms(X::StructACSet{S}, Y::StructACSet{S};kw...) where {S}
+function homomorphisms(X::StructACSet{S}, Y::StructACSet{S}; kw...) where {S}
     @timeit to "Homs(): results acset transformation" results = ACSetTransformation{S}[]
     homomorphisms(X, Y; kw...) do α
-        @timeit to "Homs(): push" push!(results, map_components(deepcopy, α)); return false
+        @timeit to "Homs(): push" push!(results, map_components(deepcopy, α))
+        return false
     end
     results
 end
-@timeit to "Homs(): second homs function" homomorphisms(f, X::StructACSet, Y::StructACSet;monic=false, iso=false, initial=(;)) = @timeit to "Homs(): backtrack" backtracking_search(f, X, Y, monic=monic, iso=iso, initial=initial)
+@timeit to "Homs(): second homs function" homomorphisms(f, X::StructACSet, Y::StructACSet; monic = false, iso = false, initial = (;)) = @timeit to "Homs(): backtrack" backtracking_search(f, X, Y, monic = monic, iso = iso, initial = initial)
 
 
 # determining which homs function the graphs use with homomorphism
@@ -151,43 +122,50 @@ show(to)
 
 # Backtracking Search
 
-# backtracking_search
+# backtracking_search imports
 import Catlab.Theories: SchemaDescType
 import Catlab.CategoricalAlgebra.CSets: BacktrackingState
 import Catlab.CategoricalAlgebra.CSets: find_mrv_elem, assign_elem!, unassign_elem!
 
 
-const to = TimerOutput()
-# necessary Structs
+
 
 
 function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
-    monic=false, iso=false, initial=(;)) where {Ob, S<:SchemaDescType{Ob}}
+    monic = false, iso = false, initial = (;)) where {Ob,S<:SchemaDescType{Ob}}
     # Fail early if no monic/isos exist on cardinality grounds.
-    @timeit to "Backtrack1(): early failure" if iso isa Bool
+    ### rarely called, takes no time/resources
+    if iso isa Bool
         iso = iso ? Ob : ()
     end
-    @timeit to "Backtrack1(): for c in iso" for c in iso
-        nparts(X,c) == nparts(Y,c) || return false
+    ### rarely called, takes no time/resources
+    for c in iso
+        nparts(X, c) == nparts(Y, c) || return false
     end
-    @timeit to "Backtrack1(): if monic is bool" if monic isa Bool
+    ### rarely called, takes no time/resources
+    if monic isa Bool
         monic = monic ? Ob : ()
     end
     # Injections between finite sets are bijections, so reduce to that case.
     @timeit to "Backtrack1(): unique" monic = unique([iso..., monic...])
-    @timeit to "Backtrack1(): for c in monic" for c in monic
-        nparts(X,c) <= nparts(Y,c) || return false
+    ### rarely called, takes no time/resources
+    for c in monic
+        nparts(X, c) <= nparts(Y, c) || return false
     end
 
     # Initialize state variables for search.
-    @timeit to "Backtrack1(): assignment init" assignment = NamedTuple{Ob}(zeros(Int, nparts(X, c)) for c in Ob)
-    @timeit to "Backtrack1(): assignment_depth init" assignment_depth = map(copy, assignment)
-    @timeit to "Backtrack1(): inv_assignment init" inv_assignment = NamedTuple{Ob}(
+    ### rarely called, takes no time/resources
+    assignment = NamedTuple{Ob}(zeros(Int, nparts(X, c)) for c in Ob)
+    ### rarely called, takes no time/resources
+    assignment_depth = map(copy, assignment)
+    ### rarely called, takes no time/resources
+    inv_assignment = NamedTuple{Ob}(
         (c in monic ? zeros(Int, nparts(Y, c)) : nothing) for c in Ob)
-        state = BacktrackingState(assignment, assignment_depth, inv_assignment, X, Y)
+    state = BacktrackingState(assignment, assignment_depth, inv_assignment, X, Y)
 
     # Make any initial assignments, failing immediately if inconsistent.
-    @timeit to "Backtrack1(): initial assignments" for (c, c_assignments) in pairs(initial)
+    ### rarely called, takes no time/resources
+    for (c, c_assignments) in pairs(initial)
         for (x, y) in partial_assignments(c_assignments)
             assign_elem!(state, 0, Val{c}, x, y) || return false
         end
@@ -210,12 +188,12 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
     c, x = mrv_elem
 
     # Attempt all assignments of the chosen element.
-    @timeit to "Backtrack2(): Y assignemnt" Y = state.codom
+    Y = state.codom
     @timeit to "Backtrack2(): for y in parts" for y in parts(Y, c)
         @timeit to "Backtrack2(): assign elem" assign_elem!(state, depth, Val{c}, x, y) &&
-        @timeit to "Backtrack2(): recursion" backtracking_search(f, state, depth + 1) &&
-            return true
-            @timeit to "Backtrack2(): unassign_elem" unassign_elem!(state, depth, Val{c}, x)
+                                               @timeit to "Backtrack2(): recursion" backtracking_search(f, state, depth + 1) &&
+                                                                                    return true
+        @timeit to "Backtrack2(): unassign_elem" unassign_elem!(state, depth, Val{c}, x)
     end
     return false
 end
@@ -226,3 +204,230 @@ manyHom()
 show(to)
 manyHoms()
 show(to)
+
+flattened_to = TimerOutputs.flatten(to)
+show(flattened_to)
+
+################################### Research/Reference Code ###################################
+# Testing outputs for coloring homs
+
+square = apex(product(u_line_two, add_loops(u_line_two)))
+t1 = homomorphisms(square, u_line_two)
+t2 = homomorphisms(u_line_two, square)
+
+square = apex(product(u_line_four, add_loops(u_line_four)))
+t1 = homomorphisms(square, u_line_four)
+t2 = homomorphisms(u_line_four, square)
+
+square = apex(product(u_line_three, add_loops(u_line_three)))
+t1 = homomorphisms(square, u_line_three)
+t2 = homomorphisms(u_line_three, square)
+
+draw(t1[1])
+draw(t1[2])
+draw(t2[1])
+draw(t2[2])
+
+###############################################################################################
+
+
+# Hom benchamrking with coloring sets
+reset_timer!(to::TimerOutput)
+
+# The following should produce acceptable results
+# Squares
+# 2-path
+square = apex(product(u_line_two, add_loops(u_line_two)))
+homomorphisms(u_line_two, square)
+homomorphisms(u_line_three, square)
+homomorphisms(u_line_four, square)
+homomorphisms(u_line_five, square)
+homomorphisms(u_line_six, square)
+homomorphisms(u_line_seven, square)
+homomorphisms(u_line_eight, square)
+
+# 3-path
+square = apex(product(u_line_three, add_loops(u_line_three)))
+homomorphisms(u_line_two, square)
+homomorphisms(u_line_three, square)
+homomorphisms(u_line_four, square)
+homomorphisms(u_line_five, square)
+homomorphisms(u_line_six, square)
+homomorphisms(u_line_seven, square)
+homomorphisms(u_line_eight, square)
+
+# 4-path
+square = apex(product(u_line_four, add_loops(u_line_four)))
+homomorphisms(u_line_two, square)
+homomorphisms(u_line_three, square)
+homomorphisms(u_line_four, square)
+homomorphisms(u_line_five, square)
+homomorphisms(u_line_six, square)
+# Stopped here because doing more isn't possible (too large) - isues occur past here without a fresh start
+# Anything beyond this point also takes a significant amount of time to complete
+# homomorphisms(u_line_seven, square)
+# homomorphisms(u_line_eight, square)
+
+# 5-path
+# square = apex(product(u_line_five, add_loops(u_line_five)))
+# homomorphisms(u_line_two, square)
+# homomorphisms(u_line_three, square)
+# homomorphisms(u_line_four, square)
+# homomorphisms(u_line_five, square)
+# homomorphisms(u_line_six, square)
+# homomorphisms(u_line_seven, square)
+# homomorphisms(u_line_eight, square)
+
+# 6-path
+# square = apex(product(u_line_six, add_loops(u_line_six)))
+# homomorphisms(u_line_two, square)
+# homomorphisms(u_line_three, square)
+# homomorphisms(u_line_four, square)
+# homomorphisms(u_line_five, square)
+# homomorphisms(u_line_six, square)
+# homomorphisms(u_line_seven, square)
+# homomorphisms(u_line_eight, square)
+
+# 7-path
+# square = apex(product(u_line_seven, add_loops(u_line_seven)))
+# homomorphisms(u_line_two, square)
+# homomorphisms(u_line_three, square)
+# homomorphisms(u_line_four, square)
+# homomorphisms(u_line_five, square)
+# homomorphisms(u_line_six, square)
+# homomorphisms(u_line_seven, square)
+# homomorphisms(u_line_eight, square)
+
+# 8-path
+# square = apex(product(u_line_eight, add_loops(u_line_eight)))
+# homomorphisms(u_line_two, square)
+# homomorphisms(u_line_three, square)
+# homomorphisms(u_line_four, square)
+# homomorphisms(u_line_five, square)
+# homomorphisms(u_line_six, square)
+# homomorphisms(u_line_seven, square)
+# homomorphisms(u_line_eight, square)
+
+show(to)
+flattened_to = TimerOutputs.flatten(to)
+show(flattened_to)
+# The results aren't too surprising. Recursion take up the majority of the time and memory
+# used by the backtracking_search.
+
+# Unsure about these, but the hom performance remains
+reset_timer!(to::TimerOutput)
+# 2-path
+square = apex(product(u_line_two, add_loops(u_line_two)))
+homomorphisms(square, u_line_two)
+homomorphisms(square, u_line_three)
+homomorphisms(square, u_line_four)
+homomorphisms(square, u_line_five)
+homomorphisms(square, u_line_six)
+homomorphisms(square, u_line_seven)
+homomorphisms(square, u_line_eight)
+
+# 3-path
+square = apex(product(u_line_three, add_loops(u_line_three)))
+homomorphisms(square, u_line_two)
+homomorphisms(square, u_line_three)
+homomorphisms(square, u_line_four)
+homomorphisms(square, u_line_five)
+homomorphisms(square, u_line_six)
+homomorphisms(square, u_line_seven)
+homomorphisms(square, u_line_eight)
+
+# 4-path
+square = apex(product(u_line_four, add_loops(u_line_four)))
+homomorphisms(square, u_line_two)
+homomorphisms(square, u_line_three)
+homomorphisms(square, u_line_four)
+homomorphisms(square, u_line_five)
+homomorphisms(square, u_line_six)
+
+show(to)
+flattened_to = TimerOutputs.flatten(to)
+show(flattened_to)
+
+# Performance is about the same in both directions.
+
+# G smaller than H (Acyclic)
+reset_timer!(to::TimerOutput)
+
+homomorphisms(a_sparse_from, a_sparse_to)
+homomorphisms(a_sparse_from2, a_sparse_to2)
+homomorphisms(a_sparse_from3, a_sparse_to3)
+homomorphisms(a_sparse_from4, a_sparse_to4)
+homomorphisms(a_sparse_from5, a_sparse_to5)
+
+homomorphisms(a_sparse_from, a_sparse_to2)
+homomorphisms(a_sparse_from, a_sparse_to4)
+homomorphisms(a_sparse_from, a_sparse_to5)
+
+homomorphisms(a_sparse_from2, a_sparse_to)
+homomorphisms(a_sparse_from2, a_sparse_to4)
+homomorphisms(a_sparse_from2, a_sparse_to5)
+homomorphisms(a_sparse_from2, a_sparse_from4)
+homomorphisms(a_sparse_from2, a_sparse_from5)
+
+homomorphisms(a_sparse_from3, a_sparse_to)
+homomorphisms(a_sparse_from3, a_sparse_to2)
+homomorphisms(a_sparse_from3, a_sparse_to4)
+homomorphisms(a_sparse_from3, a_sparse_to5)
+homomorphisms(a_sparse_from3, a_sparse_from)
+homomorphisms(a_sparse_from3, a_sparse_from4)
+homomorphisms(a_sparse_from3, a_sparse_from5)
+
+show(to)
+flattened_to = TimerOutputs.flatten(to)
+show(flattened_to)
+
+# G larger than H (Acyclic)
+reset_timer!(to::TimerOutput)
+
+homomorphisms(a_sparse_to, a_sparse_from)
+homomorphisms(a_sparse_to2, a_sparse_from2)
+homomorphisms(a_sparse_to3, a_sparse_from3)
+homomorphisms(a_sparse_to4, a_sparse_from4)
+homomorphisms(a_sparse_to5, a_sparse_from5)
+
+homomorphisms(a_sparse_to2, a_sparse_from)
+homomorphisms(a_sparse_to4, a_sparse_from)
+homomorphisms(a_sparse_to5, a_sparse_from)
+
+homomorphisms(a_sparse_to, a_sparse_from2)
+homomorphisms(a_sparse_to4, a_sparse_from2)
+homomorphisms(a_sparse_to5, a_sparse_from2)
+homomorphisms(a_sparse_from4, a_sparse_from2)
+homomorphisms(a_sparse_from5, a_sparse_from2)
+
+homomorphisms(a_sparse_to, a_sparse_from3)
+homomorphisms(a_sparse_to2, a_sparse_from3)
+homomorphisms(a_sparse_to4, a_sparse_from3)
+homomorphisms(a_sparse_to5, a_sparse_from3)
+homomorphisms(a_sparse_from, a_sparse_from3)
+homomorphisms(a_sparse_from4, a_sparse_from3)
+homomorphisms(a_sparse_from5, a_sparse_from3)
+
+show(to)
+flattened_to = TimerOutputs.flatten(to)
+show(flattened_to)
+
+# G about the same size as H
+reset_timer!(to::TimerOutput)
+
+homomorphisms(a_sparse_to, a_sparse_to5)
+homomorphisms(a_sparse_to5, a_sparse_to)
+
+homomorphisms(a_sparse_from, a_sparse_to3)
+homomorphisms(a_sparse_to3, a_sparse_from)
+# homomorphisms(a_sparse_from, a_complete_from)
+# homomorphisms(a_complete_from, a_sparse_from)
+# homomorphisms(a_sparse_to3, a_complete_from)
+# homomorphisms(a_complete_from, a_sparse_to3)
+
+homomorphisms(a_sparse_from5, a_sparse_to2)
+homomorphisms(a_sparse_to2, a_sparse_from5)
+
+show(to)
+flattened_to = TimerOutputs.flatten(to)
+show(flattened_to)
