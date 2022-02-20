@@ -48,7 +48,7 @@ const to = TimerOutput()
 
 # function for homomorphism between two graphs - it was obvious how this would breakdown
 function homomorphism(X::StructACSet, Y::StructACSet; kw...)
-    @timeit to "Homomorphism(): result initilialization" result = nothing
+    result = nothing
     @timeit to "Homomorphism(): homs calls" homomorphisms(X, Y; kw...) do α
         @timeit to "Homomorphism(): result assignment" result = α
         return true
@@ -143,8 +143,19 @@ draw(line_two)
 square = apex(product(line_two, add_loops(line_two)))
 draw(square)
 
+gt = path_graph(ReflexiveGraph, 3)
+ht = ReflexiveGraph(3)
+draw(gt)
+add_edges!(ht, [1, 2], [3, 3])
+
+draw(ht)
+pls = box_product(gt, ht)
+draw(pls)
+
+
 t1 = homomorphisms(square, line_two)
 t2 = homomorphisms(line_two, square)
+
 
 square = apex(product(u_line_four, add_loops(u_line_four)))
 t1 = homomorphisms(square, u_line_four)
@@ -195,3 +206,37 @@ reset_timer!(to::TimerOutput)
 show(to)
 flattened_to = TimerOutputs.flatten(to)
 show(flattened_to)
+
+
+# Checkerboard surjection - TimerOutputs
+reset_timer!(to::TimerOutput)
+
+for n in 1:15
+    println(n)
+    component = path_graph(ReflexiveGraph, n)
+    checkerboard = box_product(component, component)
+    checkH = homomorphism(checkerboard, add_loops(component))
+end
+
+flattened_to = TimerOutputs.flatten(to)
+show(flattened_to)
+
+# Checkerboard injection - TimerOutputs
+reset_timer!(to::TimerOutput)
+
+for n in 1:25
+    println(n)
+    component = path_graph(ReflexiveGraph, n)
+    checkerboard = box_product(component, component)
+    checkH = homomorphism(component, add_loops(checkerboard))
+end
+
+flattened_to = TimerOutputs.flatten(to)
+show(flattened_to)
+
+
+# TimerOutputs.ncalls(to["nest 1"])
+
+# TimerOutputs.time(to["nest 1"]["nest 2"])
+
+# TimerOutputs.allocated(to["nest 1"]["nest 2"])
