@@ -103,6 +103,63 @@ homomorphisms(f, X::StructACSet, Y::StructACSet; monic = false, iso = false, ini
 #     @timeit to "Start backtrack recursion" backtracking_search(f, state, 1)
 # end
 
+# function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
+#     monic = false, iso = false, initial = (;)) where {Ob,S<:SchemaDescType{Ob}}
+#     # Fail early if no monic/isos exist on cardinality grounds.
+#     if iso isa Bool
+#         iso = iso ? Ob : ()
+#     end
+#     for c in iso
+#         nparts(X, c) == nparts(Y, c) || return false
+#     end
+
+#     if monic isa Bool
+#         monic = monic ? Ob : ()
+#     end
+#     # Injections between finite sets are bijections, so reduce to that case.
+#     monic = unique([iso..., monic...])
+#     for c in monic
+#         nparts(X, c) <= nparts(Y, c) || return false
+#     end
+#     # Initialize state variables for search.
+#     assignment = NamedTuple{Ob}(zeros(Int, nparts(X, c)) for c in Ob)
+#     assignment_depth = map(copy, assignment)
+#     inv_assignment = NamedTuple{Ob}(
+#         (c in monic ? zeros(Int, nparts(Y, c)) : nothing) for c in Ob)
+#     state = BacktrackingState(assignment, assignment_depth, inv_assignment, X, Y)
+#     # Make any initial assignments, failing immediately if inconsistent.
+#     for (c, c_assignments) in pairs(initial)
+#         for (x, y) in partial_assignments(c_assignments)
+#             assign_elem!(state, 0, Val{c}, x, y) || return false
+#         end
+#     end
+#     # Start the main recursion for backtracking search.
+#     @timeit to "Start backtrack recursion" backtracking_search(f, state, 1)
+# end
+
+# # Recursive backtracking_search function
+# function backtracking_search(f, state::BacktrackingState, depth::Int)
+#     # Choose the next unassigned element.
+#     mrv, mrv_elem = @timeit to "find_mrv_elem" find_mrv_elem(state, depth)
+#     if isnothing(mrv_elem)
+#         # No unassigned elements remain, so we have a complete assignment.
+#         return f(ACSetTransformation(state.assignment, state.dom, state.codom))
+#     elseif mrv == 0
+#         # An element has no allowable assignment, so we must backtrack.
+#         return false
+#     end
+#     c, x = mrv_elem
+#     # Attempt all assignments of the chosen element.
+#     Y = state.codom
+#     for y in parts(Y, c)
+#         @timeit to "assign_elem" assign_elem!(state, depth, Val{c}, x, y) &&
+#                                  @timeit to "backtracking recursive call" backtracking_search(f, state, depth + 1) &&
+#                                                                           return true
+#         unassign_elem!(state, depth, Val{c}, x)
+#     end
+#     return false
+# end
+
 function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
     monic = false, iso = false, initial = (;)) where {Ob,S<:SchemaDescType{Ob}}
     # Fail early if no monic/isos exist on cardinality grounds.
@@ -134,13 +191,13 @@ function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
         end
     end
     # Start the main recursion for backtracking search.
-    @timeit to "Start backtrack recursion" backtracking_search(f, state, 1)
+    backtracking_search(f, state, 1)
 end
 
 # Recursive backtracking_search function
 function backtracking_search(f, state::BacktrackingState, depth::Int)
     # Choose the next unassigned element.
-    mrv, mrv_elem = @timeit to "find_mrv_elem" find_mrv_elem(state, depth)
+    mrv, mrv_elem = find_mrv_elem(state, depth)
     if isnothing(mrv_elem)
         # No unassigned elements remain, so we have a complete assignment.
         return f(ACSetTransformation(state.assignment, state.dom, state.codom))
@@ -152,15 +209,13 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
     # Attempt all assignments of the chosen element.
     Y = state.codom
     for y in parts(Y, c)
-        @timeit to "assign_elem" assign_elem!(state, depth, Val{c}, x, y) &&
-                                 @timeit to "backtracking recursive call" backtracking_search(f, state, depth + 1) &&
-                                                                          return true
+        assign_elem!(state, depth, Val{c}, x, y) &&
+            backtracking_search(f, state, depth + 1) &&
+            return true
         unassign_elem!(state, depth, Val{c}, x)
     end
     return false
 end
-
-
 
 
 
@@ -229,23 +284,93 @@ checkH = homomorphism(checkerboard, codom)
 show(to)
 
 
+################### GRIDS ###################
 
-for n in 1:20
-    for j in 1:3
+reset_timer!(to::TimerOutput)
+for n in 1:20 # number of vertices ranges from 1 to 20
+    for j in 1:3 # runs each 3 times
         println(n)
-        component = path_graph(ReflexiveGraph, n)
-        checkerboard = box_product(component, component)
-        codom = add_loops(component)
-        checkH = homomorphism(checkerboard, codom)
+        component = path_graph(ReflexiveGraph, n) # generate path graph of size n
+        checkerboard = box_product(component, component) # generate grid graph based on the component graph
+        codom = add_loops(component) # add loops to the codomain
+        checkH = homomorphism(checkerboard, codom) # generate homomorphism ***GRID -> PATH***
     end
 end
+show(to)
 
-for n in 1:20
-    for j in 1:3
-        println(n)
-        component = path_graph(ReflexiveGraph, n)
-        checkerboard = box_product(component, component)
-        codom = add_loops(checkerboard)
-        checkH = homomorphism(component, codom)
+reset_timer!(to::TimerOutput)
+for n in 1:20 # number of vertices ranges from 1 to 20
+    for j in 1:3 # runs each 3 times
+        component = path_graph(ReflexiveGraph, n) # generate path graph of size n
+        checkerboard = box_product(component, component) # generate grid graph based on the component graph
+        codom = add_loops(checkerboard) # add loops to the codomain
+        checkH = homomorphism(component, codom) # generate homomorphism ***PATH -> GRID***
     end
 end
+show(to)
+
+################### G larger than H for G->H ###################
+
+large1 = apex(product(a_sparse_three, add_loops(a_sparse_four)))
+large2 = apex(product(a_sparse_four, add_loops(a_sparse_five)))
+large3 = apex(product(a_sparse_five, add_loops(a_sparse_six)))
+large4 = apex(product(a_sparse_six, add_loops(a_sparse_six2)))
+large5 = apex(product(a_sparse_six2, add_loops(a_sparse_seven)))
+large6 = apex(product(a_sparse_seven, add_loops(a_sparse_eight)))
+large7 = apex(product(a_sparse_eight, add_loops(a_sparse_eight2)))
+
+reset_timer!(to::TimerOutput)
+for i in 1:3
+    homomorphism(large1, add_loops(a_sparse_five))
+    homomorphism(large2, add_loops(a_sparse_three))
+    homomorphism(large3, add_loops(a_sparse_seven))
+    homomorphism(large4, add_loops(a_sparse_eight))
+    homomorphism(large5, add_loops(large2))
+    homomorphism(large6, add_loops(large3))
+    homomorphism(large7, add_loops(large4))
+    homomorphism(large1, add_loops(a_sparse_three))
+    homomorphism(large2, add_loops(a_sparse_six))
+    homomorphism(large3, add_loops(a_sparse_eight))
+    homomorphism(large4, add_loops(large1))
+    homomorphism(large5, add_loops(large3))
+    homomorphism(a_sparse_eight, add_loops(a_sparse_seven))
+    homomorphism(a_sparse_eight2, add_loops(a_sparse_six))
+    homomorphism(a_sparse_five, add_loops(a_sparse_three))
+    homomorphism(a_sparse_six2, add_loops(a_sparse_four))
+end
+show(to)
+
+################### H larger than G  for G->H ###################
+
+reset_timer!(to::TimerOutput)
+homomorphism(a_sparse_three, add_loops(large1))
+homomorphism(a_sparse_six, add_loops(large2))
+homomorphism(a_sparse_eight, add_loops(large3))
+homomorphism(a_sparse_five, add_loops(large1))
+homomorphism(a_sparse_three, add_loops(large2))
+homomorphism(a_sparse_seven, add_loops(large3))
+homomorphism(a_sparse_eight, add_loops(large4))
+show(to)
+
+for i in 1:3
+    homomorphism(a_sparse_five, add_loops(large1))
+    homomorphism(a_sparse_three, add_loops(large2))
+    homomorphism(a_sparse_seven, add_loops(large3))
+    homomorphism(a_sparse_eight, add_loops(large4))
+    homomorphism(large2, add_loops(large5))
+    homomorphism(large3, add_loops(large6))
+    homomorphism(large4, add_loops(large7))
+    homomorphism(a_sparse_three, add_loops(large1))
+    homomorphism(a_sparse_six, add_loops(large2))
+    homomorphism(a_sparse_eight, add_loops(large3))
+    homomorphism(large1, add_loops(large4))
+    homomorphism(large3, add_loops(large5))
+    homomorphism(a_sparse_seven, add_loops(a_sparse_eight))
+    homomorphism(a_sparse_six, add_loops(a_sparse_eight2))
+    homomorphism(a_sparse_three, add_loops(a_sparse_five))
+    homomorphism(a_sparse_four, add_loops(a_sparse_six2))
+end
+show(to)
+
+# do equal next
+# after that let's look into the functions that are called a good bit as well as what the hom function is exploring
