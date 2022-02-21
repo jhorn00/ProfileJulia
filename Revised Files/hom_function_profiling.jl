@@ -30,7 +30,7 @@ include("graph_bank.jl")
 include("autoplot.jl")
 
 # homomorphisms imports
-import Catlab.CategoricalAlgebra.CSets: homomorphisms
+import Catlab.CategoricalAlgebra.CSets: homomorphisms, homomorphism
 import Catlab.CategoricalAlgebra.CSets: backtracking_search
 import Catlab.CategoricalAlgebra.CSets: map_components
 
@@ -240,3 +240,64 @@ show(flattened_to)
 # TimerOutputs.time(to["nest 1"]["nest 2"])
 
 # TimerOutputs.allocated(to["nest 1"]["nest 2"])
+
+function testing(x)
+    if x == 5
+        @timeit to "recurse" testing(2)
+        @timeit to "thing" x = x
+    else
+        @timeit to "multiply" x = x * 500
+    end
+end
+
+function recursiveDictTraversal(list, targetDict)
+    if haskey(targetDict, "inner_timers")
+        if length(targetDict["inner_timers"]) == 0
+            append!(list, targetDict["time_ns"])
+        else
+            key = keys(targetDict["inner_timers"])
+            for k in key
+                recursiveDictTraversal(list, targetDict["inner_timers"][k])
+            end
+        end
+    end
+end
+
+reset_timer!(to::TimerOutput)
+thing = testing(5)
+flattened_to = TimerOutputs.flatten(to)
+show(flattened_to)
+
+x = Any[]
+recursiveDictTraversal(x, TimerOutputs.todict(to))
+x
+
+TimerOutputs.todict(to)
+TimerOutputs.todict(to)["inner_timers"]
+TimerOutputs.todict(to)["inner_timers"]
+key = keys(TimerOutputs.todict(to)["inner_timers"])
+
+
+# Checkerboard surjection - BenchmarkTools
+for n in 1:15
+    for j in 1:1
+        reset_timer!(to::TimerOutput)
+        println(n)
+        component = path_graph(ReflexiveGraph, n)
+        checkerboard = box_product(component, component)
+        codom = add_loops(component)
+        checkH = homomorphism(checkerboard, codom)
+
+    end
+end
+
+# Checkerboard injection - BenchmarkTools
+for n in 1:15
+    for j in 1:3
+        println(n)
+        component = path_graph(ReflexiveGraph, n)
+        checkerboard = box_product(component, component)
+        codom = add_loops(checkerboard)
+        checkH = homomorphism($component, $codom)
+    end
+end
