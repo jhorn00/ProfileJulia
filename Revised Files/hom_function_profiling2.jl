@@ -36,8 +36,8 @@ import Catlab.CategoricalAlgebra.CSets: map_components
 
 # backtracking_search imports
 import Catlab.Theories: SchemaDescType
-import Catlab.CategoricalAlgebra.CSets: BacktrackingState
-import Catlab.CategoricalAlgebra.CSets: find_mrv_elem, assign_elem!, unassign_elem!
+import Catlab.CategoricalAlgebra.CSets: BacktrackingState, find_mrv_elem, can_assign_elem, quot
+import Catlab.CategoricalAlgebra.CSets: find_mrv_elem, assign_elem!, unassign_elem!, out_attr, out_hom
 
 numSamples = 500
 BenchmarkTools.DEFAULT_PARAMETERS.samples = numSamples
@@ -197,10 +197,10 @@ end
 # Recursive backtracking_search function
 function backtracking_search(f, state::BacktrackingState, depth::Int)
     # Choose the next unassigned element.
-    mrv, mrv_elem = @timeit to "find_mrv_elem" find_mrv_elem(state, depth)
-    if @timeit to "isnothing" isnothing(mrv_elem)
+    mrv, mrv_elem = find_mrv_elem(state, depth)
+    if isnothing(mrv_elem)
         # No unassigned elements remain, so we have a complete assignment.
-        return f(@timeit to "ACSetTrans" ACSetTransformation(state.assignment, state.dom, state.codom))
+        return f(ACSetTransformation(state.assignment, state.dom, state.codom))
     elseif mrv == 0
         # An element has no allowable assignment, so we must backtrack.
         return false
@@ -209,15 +209,61 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
     # Attempt all assignments of the chosen element.
     Y = state.codom
     for y in parts(Y, c)
-        @timeit to "assign_elem" assign_elem!(state, depth, Val{c}, x, y) &&
-            @timeit to "recurse" backtracking_search(f, state, depth + 1) &&
+        assign_elem!(state, depth, Val{c}, x, y) &&
+            backtracking_search(f, state, depth + 1) &&
             return true
-        @timeit to "unassign_elem" unassign_elem!(state, depth, Val{c}, x)
+        unassign_elem!(state, depth, Val{c}, x)
     end
     return false
 end
 
 
+""" Find an unassigned element having the minimum remaining values (MRV).
+"""
+function find_mrv_elem(state::BacktrackingState{S}, depth) where {S}
+    mrv, mrv_elem = Inf, nothing
+    Y = state.codom
+    for c in ob(S), (x, y) in enumerate(state.assignment[c])
+        y == 0 || continue
+        n = count(can_assign_elem(state, depth, Val{c}, x, y) for y in parts(Y, c))
+        if n < mrv
+            mrv, mrv_elem = n, (c, x)
+        end
+    end
+    (mrv, mrv_elem)
+end
+
+
+@generated function assign_elem!(state::BacktrackingState{S}, depth,
+    ::Type{Val{c}}, x, y) where {S,c}
+    quote
+        y′ = state.assignment.$c[x]
+        y′ == y && return true  # If x is already assigned to y, return immediately.
+        y′ == 0 || return false # Otherwise, x must be unassigned.
+        @timeit to "if" if !isnothing(state.inv_assignment.$c) && state.inv_assignment.$c[y] != 0
+            # Also, y must unassigned in the inverse assignment.
+            return false
+        end
+
+        # Check attributes first to fail as quickly as possible.
+        X, Y = state.dom, state.codom
+        $(map(@timeit to "out_attr" out_attr(S, c)) do f
+            :(@timeit to "subpart 1" subpart(X, x, $(@timeit to "quot 1" quot(f))) == @timeit to "subpart 2" subpart(Y, y, $(@timeit to "quot 2" quot(f))) || return false)
+        end...)
+
+        # Make the assignment and recursively assign subparts.
+        state.assignment.$c[x] = y
+        state.assignment_depth.$c[x] = depth
+        @timeit to "if 2" if !isnothing(state.inv_assignment.$c)
+            state.inv_assignment.$c[y] = x
+        end
+        $(map(@timeit to "out_hom" out_hom(S, c)) do (f, d)
+            :(assign_elem!(state, depth, Val{$(quot(d))}, subpart(X, x, $(quot(f))),
+                subpart(Y, y, $(quot(f)))) || return false)
+        end...)
+        return true
+    end
+end
 
 
 # Checkerboard surjection - BenchmarkTools
@@ -340,6 +386,7 @@ for i in 1:3
     homomorphism(a_sparse_six2, add_loops(a_sparse_four))
 end
 show(to)
+show(TimerOutputs.flatten(to))
 
 ################### H larger than G  for G->H ###################
 
@@ -372,6 +419,7 @@ for i in 1:3
     homomorphism(a_sparse_four, add_loops(a_sparse_six2))
 end
 show(to)
+show(TimerOutputs.flatten(to))
 
 # G about the same size as H
 reset_timer!(to::TimerOutput)
@@ -393,8 +441,6 @@ for i in 1:3
     homomorphism(a_sparse_five, add_loops(a_sparse_six2))
 end
 show(to)
-
+show(TimerOutputs.flatten(to))
 
 # after that let's look into the functions that are called a good bit as well as what the hom function is exploring
-# look into find_mrv_elem
-# try to understand why the > 100% thing is happening
