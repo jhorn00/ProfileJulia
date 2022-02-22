@@ -14,3 +14,4 @@ https://github.com/AlgebraicJulia/Catlab.jl
 https://algebraicjulia.github.io/Catlab.jl/dev/  
 https://github.com/JuliaCI/BenchmarkTools.jl  
 https://github.com/KristofferC/TimerOutputs.jl  
+https://github.com/JuliaAcademy/JuliaTutorials/blob/6d61077a0f6565e19305cddab0adde79d232e147/introductory-tutorials/intro-to-julia/09.%20Julia%20is%20fast.ipynb  
