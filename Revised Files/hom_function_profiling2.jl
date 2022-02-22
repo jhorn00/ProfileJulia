@@ -197,10 +197,10 @@ end
 # Recursive backtracking_search function
 function backtracking_search(f, state::BacktrackingState, depth::Int)
     # Choose the next unassigned element.
-    mrv, mrv_elem = find_mrv_elem(state, depth)
-    if isnothing(mrv_elem)
+    mrv, mrv_elem = @timeit to "find_mrv_elem" find_mrv_elem(state, depth)
+    if @timeit to "isnothing" isnothing(mrv_elem)
         # No unassigned elements remain, so we have a complete assignment.
-        return f(ACSetTransformation(state.assignment, state.dom, state.codom))
+        return f(@timeit to "ACSetTrans" ACSetTransformation(state.assignment, state.dom, state.codom))
     elseif mrv == 0
         # An element has no allowable assignment, so we must backtrack.
         return false
@@ -209,10 +209,10 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
     # Attempt all assignments of the chosen element.
     Y = state.codom
     for y in parts(Y, c)
-        assign_elem!(state, depth, Val{c}, x, y) &&
-            backtracking_search(f, state, depth + 1) &&
+        @timeit to "assign_elem" assign_elem!(state, depth, Val{c}, x, y) &&
+            @timeit to "recurse" backtracking_search(f, state, depth + 1) &&
             return true
-        unassign_elem!(state, depth, Val{c}, x)
+        @timeit to "unassign_elem" unassign_elem!(state, depth, Val{c}, x)
     end
     return false
 end
@@ -282,12 +282,12 @@ checkH = homomorphism(checkerboard, codom)
 # codom = add_loops(component)
 # checkH = homomorphism(checkerboard, codom)
 show(to)
-
+show(TimerOutputs.flatten(to))
 
 ################### GRIDS ###################
 
 reset_timer!(to::TimerOutput)
-for n in 1:20 # number of vertices ranges from 1 to 20
+for n in 1:15 # number of vertices ranges from 1 to 20
     for j in 1:3 # runs each 3 times
         println(n)
         component = path_graph(ReflexiveGraph, n) # generate path graph of size n
@@ -296,18 +296,19 @@ for n in 1:20 # number of vertices ranges from 1 to 20
         checkH = homomorphism(checkerboard, codom) # generate homomorphism ***GRID -> PATH***
     end
 end
-show(to)
+show(TimerOutputs.flatten(to))
 
 reset_timer!(to::TimerOutput)
-for n in 1:20 # number of vertices ranges from 1 to 20
+for n in 1:15 # number of vertices ranges from 1 to 20
     for j in 1:3 # runs each 3 times
+        println(n)
         component = path_graph(ReflexiveGraph, n) # generate path graph of size n
         checkerboard = box_product(component, component) # generate grid graph based on the component graph
         codom = add_loops(checkerboard) # add loops to the codomain
         checkH = homomorphism(component, codom) # generate homomorphism ***PATH -> GRID***
     end
 end
-show(to)
+show(TimerOutputs.flatten(to))
 
 ################### G larger than H for G->H ###################
 
@@ -372,5 +373,28 @@ for i in 1:3
 end
 show(to)
 
-# do equal next
+# G about the same size as H
+reset_timer!(to::TimerOutput)
+
+for i in 1:3
+    # same
+    homomorphism(a_sparse_five, add_loops(a_sparse_five))
+    homomorphism(a_sparse_eight, add_loops(a_sparse_eight))
+    homomorphism(a_sparse_seven, add_loops(a_sparse_eight2))
+    homomorphism(a_sparse_eight, add_loops(a_sparse_seven))
+    homomorphism(a_sparse_three, add_loops(a_sparse_four))
+    homomorphism(a_sparse_six, add_loops(a_sparse_five))
+    homomorphism(a_sparse_four, add_loops(a_sparse_five))
+    homomorphism(a_sparse_five, add_loops(a_sparse_four))
+    homomorphism(a_sparse_four, add_loops(a_sparse_three))
+    homomorphism(a_sparse_seven, add_loops(a_sparse_eight))
+    homomorphism(a_sparse_six, add_loops(a_sparse_six2))
+    homomorphism(a_sparse_six2, add_loops(a_sparse_five))
+    homomorphism(a_sparse_five, add_loops(a_sparse_six2))
+end
+show(to)
+
+
 # after that let's look into the functions that are called a good bit as well as what the hom function is exploring
+# look into find_mrv_elem
+# try to understand why the > 100% thing is happening
