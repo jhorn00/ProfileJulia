@@ -345,7 +345,7 @@ end
 show(TimerOutputs.flatten(to))
 
 reset_timer!(to::TimerOutput)
-for n in 1:15 # number of vertices ranges from 1 to 20
+for n in 1:8 # number of vertices ranges from 1 to 20
     for j in 1:3 # runs each 3 times
         println(n)
         component = path_graph(ReflexiveGraph, n) # generate path graph of size n
