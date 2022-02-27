@@ -259,7 +259,7 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
     end
     c, x = mrv_elem
     # Attempt all assignments of the chosen element.
-    Y = state.codom
+    Y = copy(state.codom)
     for y in parts(Y, c)
         assign_elem!(state, depth, Val{c}, x, y) &&
             backtracking_search(f, state, depth + 1) &&

@@ -6,7 +6,6 @@ using Catlab.Graphics
 using Catlab.Graphics.Graphviz
 using Colors
 using Plots
-using TimerOutputs
 draw(g) = to_graphviz(g, node_labels = true, edge_labels = true)
 GraphvizGraphs.to_graphviz(f::ACSetTransformation; kw...) =
     to_graphviz(GraphvizGraphs.to_graphviz_property_graph(f; kw...))
@@ -26,8 +25,8 @@ function GraphvizGraphs.to_graphviz_property_graph(f::ACSetTransformation; kw...
     end
     pg
 end
-include("../Revised Files/graph_bank.jl")
-include("../Revised Files/autoplot.jl")
+include("graph_bank.jl")
+include("autoplot.jl")
 
 # homomorphisms imports
 import Catlab.CategoricalAlgebra.CSets: homomorphisms, homomorphism
@@ -39,9 +38,11 @@ import Catlab.Theories: SchemaDescType
 import Catlab.CategoricalAlgebra.CSets: BacktrackingState, find_mrv_elem, can_assign_elem, quot
 import Catlab.CategoricalAlgebra.CSets: find_mrv_elem, assign_elem!, unassign_elem!, out_attr, out_hom
 
+numSamples = 1000
+BenchmarkTools.DEFAULT_PARAMETERS.samples = numSamples
+
 ################################### Run the above code ###################################
 
-const to = TimerOutput()
 
 # function for homomorphism between two graphs - it was obvious how this would breakdown
 function homomorphism(X::StructACSet, Y::StructACSet; kw...)
@@ -112,7 +113,7 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
     end
     c, x = mrv_elem
     # Attempt all assignments of the chosen element.
-    Y = copy(state.codom)
+    Y = state.codom
     for y in parts(Y, c)
         assign_elem!(state, depth, Val{c}, x, y) &&
             backtracking_search(f, state, depth + 1) &&
@@ -145,7 +146,7 @@ end
         y′ = state.assignment.$c[x]
         y′ == y && return true  # If x is already assigned to y, return immediately.
         y′ == 0 || return false # Otherwise, x must be unassigned.
-        if !isnothing(state.inv_assignment.$c) && state.inv_assignment.$c[y] != 0
+        @timeit to "if" if !isnothing(state.inv_assignment.$c) && state.inv_assignment.$c[y] != 0
             # Also, y must unassigned in the inverse assignment.
             return false
         end
@@ -170,64 +171,8 @@ end
     end
 end
 
-g = @acset Graphs.Graph begin
-    V = 5
-    E = 5
-    src = [1, 2, 3, 3, 4]
-    tgt = [3, 3, 4, 5, 5]
-end
-g_codom = add_loops(g)
-# draw(g)
-h = @acset Graphs.Graph begin
-    V = 3
-    E = 3
-    src = [1, 1, 2]
-    tgt = [2, 3, 3]
-end
-h_codom = add_loops(h)
-# draw(h)
 
-
-reset_timer!(to::TimerOutput)
-gtoh = homomorphism(g, h_codom)
-htog = homomorphism(h, g_codom)
-show(TimerOutputs.flatten(to))
-# collect(gtoh[:V])
-# collect(gtoh[:E])
-draw(gtoh)
-draw(htog)
-
-if gtoh == htog
-    println("equal")
-else
-    println("not equal")
-end
-
-
-test = homomorphism(a_sparse_three, add_loops(a_sparse_four))
-draw(test)
-
-test = homomorphism(a_sparse_four, add_loops(a_sparse_eight))
-draw(test)
-
-# component = path_graph(ReflexiveGraph, 2) # generate path graph of size n
-# checkerboard = box_product(component, component) # generate grid graph based on the component graph
-# codom_val = add_loops(component) # add loops to the codomain
-# checkH = homomorphism(checkerboard, codom_val) # generate homomorphism ***GRID -> PATH***
-# draw(checkH) # this does not work
-# draw(component)
-# draw(checkerboard)
-# draw(codom_val)
-
-
-
-# testing if it will change the old value (it will not)
-# function myTest(test)
-#     X = test.dom
-#     Y = test.codom
-#     println("Inside before: ", X, "\n and test is: ", test.dom)
-#     X = g
-#     println("Inside: ", X, "\nand test is: ", test.dom)
-# end
-# myTest(test)
-# println("Outside: ", test.dom, "\nand g is: ", g)
+# Redo iterative profiling with BenchmarkTools
+# Each run of benchmark generates a trial. The data can be pulled from each trial and plotted.
+# Try using BenchmarkGroup first. If that doesn't help it will need to be done manually.
+# @tagged macro will also be useful here.
