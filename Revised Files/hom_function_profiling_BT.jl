@@ -6,6 +6,11 @@ using Catlab.Graphics
 using Catlab.Graphics.Graphviz
 using Colors
 using Plots
+using Profile, PProf
+using TimerOutputs
+using StatProfilerHTML
+using ProfileView
+
 draw(g) = to_graphviz(g, node_labels = true, edge_labels = true)
 GraphvizGraphs.to_graphviz(f::ACSetTransformation; kw...) =
     to_graphviz(GraphvizGraphs.to_graphviz_property_graph(f; kw...))
@@ -40,6 +45,8 @@ import Catlab.CategoricalAlgebra.CSets: find_mrv_elem, assign_elem!, unassign_el
 
 numSamples = 1000
 BenchmarkTools.DEFAULT_PARAMETERS.samples = numSamples
+
+const to = TimerOutput()
 
 ################################### Run the above code ###################################
 
@@ -176,3 +183,61 @@ end
 # Each run of benchmark generates a trial. The data can be pulled from each trial and plotted.
 # Try using BenchmarkGroup first. If that doesn't help it will need to be done manually.
 # @tagged macro will also be useful here.
+
+# suite = BenchmarkGroup()
+# suite["recursion"] = BenchmarkGroup(["", ""])
+
+g = @acset Graphs.Graph begin
+    V = 5
+    E = 5
+    src = [1, 2, 3, 3, 4]
+    tgt = [3, 3, 4, 5, 5]
+end
+g_codom = add_loops(g)
+# draw(g)
+h = @acset Graphs.Graph begin
+    V = 3
+    E = 3
+    src = [1, 1, 2]
+    tgt = [2, 3, 3]
+end
+h_codom = add_loops(h)
+# draw(h)
+
+function testThing()
+    x = 5 + 5
+    y = 5 * 5
+    z = x * y * y * y
+    println(z)
+end
+
+testThing()
+
+gtoh = homomorphism(g, h_codom)
+htog = homomorphism(h, g_codom)
+# @pprof homomorphism(g, h_codom)
+@profilehtml homomorphism(g, h_codom)
+
+@profilehtml for n in 4:4 # number of vertices ranges from 1 to 20
+    println(n)
+    component = path_graph(ReflexiveGraph, n) # generate path graph of size n
+    checkerboard = box_product(component, component) # generate grid graph based on the component graph
+    codom = add_loops(component) # add loops to the codomain
+    checkH = homomorphism(checkerboard, codom) # generate homomorphism ***GRID -> PATH***
+end
+
+@profilehtml for n in 4:4 # number of vertices ranges from 1 to 20
+    println(n)
+    component = path_graph(ReflexiveGraph, n) # generate path graph of size n
+    checkerboard = box_product(component, component) # generate grid graph based on the component graph
+    codom = add_loops(checkerboard) # add loops to the codomain
+    checkH = homomorphism(component, codom) # generate homomorphism ***GRID -> PATH***
+end
+
+for n in 4:4 # number of vertices ranges from 1 to 20
+    println(n)
+    component = path_graph(ReflexiveGraph, n) # generate path graph of size n
+    checkerboard = box_product(component, component) # generate grid graph based on the component graph
+    codom = add_loops(checkerboard) # add loops to the codomain
+    checkH = ProfileView.@profview homomorphism(component, codom) # generate homomorphism ***GRID -> PATH***
+end
