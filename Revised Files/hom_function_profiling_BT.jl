@@ -8,8 +8,8 @@ using Colors
 using Plots
 using Profile, PProf
 using TimerOutputs
-using StatProfilerHTML
-using ProfileView
+# using StatProfilerHTML
+# using ProfileView
 
 draw(g) = to_graphviz(g, node_labels = true, edge_labels = true)
 GraphvizGraphs.to_graphviz(f::ACSetTransformation; kw...) =
@@ -43,7 +43,7 @@ import Catlab.Theories: SchemaDescType
 import Catlab.CategoricalAlgebra.CSets: BacktrackingState, find_mrv_elem, can_assign_elem, quot
 import Catlab.CategoricalAlgebra.CSets: find_mrv_elem, assign_elem!, unassign_elem!, out_attr, out_hom
 
-numSamples = 1000
+numSamples = 500
 BenchmarkTools.DEFAULT_PARAMETERS.samples = numSamples
 
 const to = TimerOutput()
@@ -202,42 +202,79 @@ h = @acset Graphs.Graph begin
     tgt = [2, 3, 3]
 end
 h_codom = add_loops(h)
-# draw(h)
 
-function testThing()
-    x = 5 + 5
-    y = 5 * 5
-    z = x * y * y * y
-    println(z)
+
+
+# Baseline for total
+component = path_graph(ReflexiveGraph, 4)
+checkerboard = box_product(component, component)
+component_codom = add_loops(component)
+checkerboard_codom = add_loops(checkerboard)
+checkH = @btime homomorphism(checkerboard, component_codom) # generate homomorphism ***GRID -> PATH***
+checkH = @btime homomorphism(component, checkerboard_codom) # generate homomorphism ***PATH -> GRID***
+
+
+# Function for testing
+
+function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
+    monic = false, iso = false, initial = (;)) where {Ob,S<:SchemaDescType{Ob}}
+    # Fail early if no monic/isos exist on cardinality grounds.
+    if iso isa Bool
+        iso = iso ? Ob : ()
+    end
+    for c in iso # BTIME WORKS ON THE LOOP - 0 bytes, ran in 1ns for both directions of the checkerboard testing
+        nparts(X, c) == nparts(Y, c) || return false
+    end
+
+    if monic isa Bool
+        monic = monic ? Ob : ()
+    end
+    # Injections between finite sets are bijections, so reduce to that case.
+    monic = unique([iso..., monic...]) # BTIME WORKS HERE - takes only 480 bytes,
+    for c in monic # BTIME WORKS FOR THIS LOOP - takes 0 bytes and 5ns
+        nparts(X, c) <= nparts(Y, c) || return false
+    end
+    # Initialize state variables for search.
+    assignment = NamedTuple{Ob}(zeros(Int, nparts(X, c)) for c in Ob) # @TIME WORKS - takes minimal time
+    assignment_depth = map(copy, assignment) # @BTIME WORKS - ~45-60ns with 2 allocs and 208-592 bytes -->This is a potential point of growth
+    inv_assignment = NamedTuple{Ob}( # @TIME WORKS - takes minimal time - alloc only 128 bytes for both cases
+        (c in monic ? zeros(Int, nparts(Y, c)) : nothing) for c in Ob)
+    state = BacktrackingState(assignment, assignment_depth, inv_assignment, X, Y) # @TIME works, 3 allocs, 272 bytes for each - this should grow with size of graph but it's ok
+    # Make any initial assignments, failing immediately if inconsistent.
+    for (c, c_assignments) in pairs(initial) # @TIME worked and this was insignificant, literally got 0
+        for (x, y) in partial_assignments(c_assignments)
+            assign_elem!(state, 0, Val{c}, x, y) || return false
+        end
+    end
+    # Start the main recursion for backtracking search.
+    backtracking_search(f, state, 1) # @TIME worked, btime not reliable here - This takes all of the runtime for this function
 end
 
-testThing()
-
-gtoh = homomorphism(g, h_codom)
-htog = homomorphism(h, g_codom)
-# @pprof homomorphism(g, h_codom)
-@profilehtml homomorphism(g, h_codom)
-
-@profilehtml for n in 4:4 # number of vertices ranges from 1 to 20
-    println(n)
-    component = path_graph(ReflexiveGraph, n) # generate path graph of size n
-    checkerboard = box_product(component, component) # generate grid graph based on the component graph
-    codom = add_loops(component) # add loops to the codomain
-    checkH = homomorphism(checkerboard, codom) # generate homomorphism ***GRID -> PATH***
+function backtracking_search(f, state::BacktrackingState, depth::Int)
+    # Choose the next unassigned element.
+    mrv, mrv_elem = find_mrv_elem(state, depth) # According to @TIME and other testing this function uses a lot of resources
+    if isnothing(mrv_elem) # isnothing is entirely insignificant in terms of runtime takes 0.001ns to run
+        # No unassigned elements remain, so we have a complete assignment.
+        return f(ACSetTransformation(state.assignment, state.dom, state.codom)) # takes some mem and time but it is necessary
+    elseif mrv == 0
+        # An element has no allowable assignment, so we must backtrack.
+        return false
+    end
+    c, x = mrv_elem
+    # Attempt all assignments of the chosen element.
+    Y = state.codom
+    for y in parts(Y, c) ########################################## find a way to profile this
+        assign_elem!(state, depth, Val{c}, x, y) &&
+            backtracking_search(f, state, depth + 1) &&
+            return true
+        unassign_elem!(state, depth, Val{c}, x)
+    end
+    return false
 end
 
-@profilehtml for n in 4:4 # number of vertices ranges from 1 to 20
-    println(n)
-    component = path_graph(ReflexiveGraph, n) # generate path graph of size n
-    checkerboard = box_product(component, component) # generate grid graph based on the component graph
-    codom = add_loops(checkerboard) # add loops to the codomain
-    checkH = homomorphism(component, codom) # generate homomorphism ***GRID -> PATH***
-end
+println("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
 
-for n in 4:4 # number of vertices ranges from 1 to 20
-    println(n)
-    component = path_graph(ReflexiveGraph, n) # generate path graph of size n
-    checkerboard = box_product(component, component) # generate grid graph based on the component graph
-    codom = add_loops(checkerboard) # add loops to the codomain
-    checkH = ProfileView.@profview homomorphism(component, codom) # generate homomorphism ***GRID -> PATH***
-end
+
+
+homomorphism(checkerboard, component_codom) # generate homomorphism ***GRID -> PATH***
+homomorphism(component, checkerboard_codom) # generate homomorphism ***PATH -> GRID***
