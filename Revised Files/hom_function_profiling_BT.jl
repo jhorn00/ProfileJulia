@@ -153,7 +153,7 @@ end
         y′ = state.assignment.$c[x]
         y′ == y && return true  # If x is already assigned to y, return immediately.
         y′ == 0 || return false # Otherwise, x must be unassigned.
-        @timeit to "if" if !isnothing(state.inv_assignment.$c) && state.inv_assignment.$c[y] != 0
+        if !isnothing(state.inv_assignment.$c) && state.inv_assignment.$c[y] != 0
             # Also, y must unassigned in the inverse assignment.
             return false
         end
@@ -247,12 +247,12 @@ function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
         end
     end
     # Start the main recursion for backtracking search.
-    backtracking_search(f, state, 1) # @TIME worked, btime not reliable here - This takes all of the runtime for this function
+    @timeit to "start recursion" backtracking_search(f, state, 1) # @TIME worked, btime not reliable here - This takes all of the runtime for this function
 end
 
 function backtracking_search(f, state::BacktrackingState, depth::Int)
     # Choose the next unassigned element.
-    mrv, mrv_elem = find_mrv_elem(state, depth) # According to @TIME and other testing this function uses a lot of resources
+    mrv, mrv_elem = @timeit to "find_mrv_elem" find_mrv_elem(state, depth) # According to @TIME and other testing this function uses a lot of resources
     if isnothing(mrv_elem) # isnothing is entirely insignificant in terms of runtime takes 0.001ns to run
         # No unassigned elements remain, so we have a complete assignment.
         return f(ACSetTransformation(state.assignment, state.dom, state.codom)) # takes some mem and time but it is necessary
@@ -263,11 +263,11 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
     c, x = mrv_elem
     # Attempt all assignments of the chosen element.
     Y = state.codom
-    for y in parts(Y, c) ########################################## find a way to profile this
-        assign_elem!(state, depth, Val{c}, x, y) &&
-            backtracking_search(f, state, depth + 1) &&
-            return true
-        unassign_elem!(state, depth, Val{c}, x)
+    for y in parts(Y, c) ########################################## find a way to profile this - might just need timeroutputs
+        @timeit to "assign_elem!" assign_elem!(state, depth, Val{c}, x, y) &&
+                                  @timeit to "recursive call" backtracking_search(f, state, depth + 1) &&
+                                                              return true
+        @timeit to "unassign_elem!" unassign_elem!(state, depth, Val{c}, x)
     end
     return false
 end
@@ -275,6 +275,70 @@ end
 println("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
 
 
-
+reset_timer!(to::TimerOutput)
 homomorphism(checkerboard, component_codom) # generate homomorphism ***GRID -> PATH***
 homomorphism(component, checkerboard_codom) # generate homomorphism ***PATH -> GRID***
+show(to)
+show(TimerOutputs.flatten(to))
+
+# find_mrv_elem runtime usage shrinks over time
+# focus on assign_elem for now
+
+
+
+
+
+function find_mrv_elem(state::BacktrackingState{S}, depth) where {S}
+    mrv, mrv_elem = Inf, nothing
+    Y = state.codom
+    for c in ob(S), (x, y) in enumerate(state.assignment[c])
+        y == 0 || continue
+        n = count(can_assign_elem(state, depth, Val{c}, x, y) for y in parts(Y, c))
+        if n < mrv
+            mrv, mrv_elem = n, (c, x)
+        end
+    end
+    (mrv, mrv_elem)
+end
+
+
+@generated function assign_elem!(state::BacktrackingState{S}, depth,
+    ::Type{Val{c}}, x, y) where {S,c}
+    quote
+        y′ = state.assignment.$c[x]
+        y′ == y && return true  # If x is already assigned to y, return immediately.
+        y′ == 0 || return false # Otherwise, x must be unassigned.
+        if !isnothing(state.inv_assignment.$c) && state.inv_assignment.$c[y] != 0
+            # Also, y must unassigned in the inverse assignment.
+            return false
+        end
+
+        # Check attributes first to fail as quickly as possible.
+        X, Y = state.dom, state.codom
+        @timeit to "map thing" ($(map(out_attr(S, c)) do f
+            :(subpart(X, x, $(quot(f))) == subpart(Y, y, $(quot(f))) || return false)
+        end...))
+
+        # Make the assignment and recursively assign subparts.
+        state.assignment.$c[x] = y
+        state.assignment_depth.$c[x] = depth
+        if !isnothing(state.inv_assignment.$c)
+            state.inv_assignment.$c[y] = x
+        end
+        $(map(out_hom(S, c)) do (f, d)
+            :(assign_elem!(state, depth, Val{$(quot(d))}, subpart(X, x, $(quot(f))),
+                subpart(Y, y, $(quot(f)))) || return false)
+        end...)
+        return true
+    end
+end
+
+reset_timer!(to::TimerOutput)
+homomorphism(checkerboard, component_codom) # generate homomorphism ***GRID -> PATH***
+homomorphism(component, checkerboard_codom) # generate homomorphism ***PATH -> GRID***
+show(to)
+show(TimerOutputs.flatten(to))
+
+
+#given that assign_elem is recursive, that could have something to do with the memory consumption
+
