@@ -206,7 +206,7 @@ h_codom = add_loops(h)
 
 
 # Baseline for total
-component = path_graph(ReflexiveGraph, 4)
+component = path_graph(ReflexiveGraph, 5)
 checkerboard = box_product(component, component)
 component_codom = add_loops(component)
 checkerboard_codom = add_loops(checkerboard)
@@ -247,12 +247,12 @@ function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
         end
     end
     # Start the main recursion for backtracking search.
-    @timeit to "start recursion" backtracking_search(f, state, 1) # @TIME worked, btime not reliable here - This takes all of the runtime for this function
+    backtracking_search(f, state, 1) # @TIME worked, btime not reliable here - This takes all of the runtime for this function
 end
 
 function backtracking_search(f, state::BacktrackingState, depth::Int)
     # Choose the next unassigned element.
-    mrv, mrv_elem = @timeit to "find_mrv_elem" find_mrv_elem(state, depth) # According to @TIME and other testing this function uses a lot of resources
+    mrv, mrv_elem = find_mrv_elem(state, depth) # According to @TIME and other testing this function uses a lot of resources
     if isnothing(mrv_elem) # isnothing is entirely insignificant in terms of runtime takes 0.001ns to run
         # No unassigned elements remain, so we have a complete assignment.
         return f(ACSetTransformation(state.assignment, state.dom, state.codom)) # takes some mem and time but it is necessary
@@ -264,10 +264,10 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
     # Attempt all assignments of the chosen element.
     Y = state.codom
     for y in parts(Y, c) ########################################## find a way to profile this - might just need timeroutputs
-        @timeit to "assign_elem!" assign_elem!(state, depth, Val{c}, x, y) &&
-                                  @timeit to "recursive call" backtracking_search(f, state, depth + 1) &&
-                                                              return true
-        @timeit to "unassign_elem!" unassign_elem!(state, depth, Val{c}, x)
+        assign_elem!(state, depth, Val{c}, x, y) &&
+            backtracking_search(f, state, depth + 1) &&
+            return true
+        unassign_elem!(state, depth, Val{c}, x)
     end
     return false
 end
@@ -286,14 +286,27 @@ show(TimerOutputs.flatten(to))
 
 
 
-
+""" Check whether element (c,x) can be assigned to (c,y) in current assignment.
+"""
+function can_assign_elem(state::BacktrackingState, depth,
+    ::Type{Val{c}}, x, y) where {c}
+    # Although this method is nonmutating overall, we must temporarily mutate the
+    # backtracking state, for several reasons. First, an assignment can be a
+    # consistent at each individual subpart but not consistent for all subparts
+    # simultaneously (consider trying to assign a self-loop to an edge with
+    # distinct vertices). Moreover, in schemas with non-trivial endomorphisms, we
+    # must keep track of which elements we have visited to avoid looping forever.
+    ok = @timeit to "assign_elem in can_assign_elem" assign_elem!(state, depth, Val{c}, x, y)
+    @timeit to "unassign_elem in can_assign_elem" unassign_elem!(state, depth, Val{c}, x)
+    return ok
+end
 
 function find_mrv_elem(state::BacktrackingState{S}, depth) where {S}
     mrv, mrv_elem = Inf, nothing
     Y = state.codom
     for c in ob(S), (x, y) in enumerate(state.assignment[c])
         y == 0 || continue
-        n = count(can_assign_elem(state, depth, Val{c}, x, y) for y in parts(Y, c))
+        n = count(@timeit to "can_assign_elem" can_assign_elem(state, depth, Val{c}, x, y) for y in parts(Y, c)) # bulk of performance loss - it calls assign_elem
         if n < mrv
             mrv, mrv_elem = n, (c, x)
         end
@@ -315,9 +328,9 @@ end
 
         # Check attributes first to fail as quickly as possible.
         X, Y = state.dom, state.codom
-        @timeit to "map thing" ($(map(out_attr(S, c)) do f
+        $(map(out_attr(S, c)) do f # uses little memory, and appears to remain consistent even as graph size grows
             :(subpart(X, x, $(quot(f))) == subpart(Y, y, $(quot(f))) || return false)
-        end...))
+        end...)
 
         # Make the assignment and recursively assign subparts.
         state.assignment.$c[x] = y
@@ -325,10 +338,10 @@ end
         if !isnothing(state.inv_assignment.$c)
             state.inv_assignment.$c[y] = x
         end
-        $(map(out_hom(S, c)) do (f, d)
+        @timeit to "assign recursion" [$(map(out_hom(S, c)) do (f, d) # possible to use dynamic programming? I don't understand it enough to give much input here
             :(assign_elem!(state, depth, Val{$(quot(d))}, subpart(X, x, $(quot(f))),
                 subpart(Y, y, $(quot(f)))) || return false)
-        end...)
+        end...)]
         return true
     end
 end
@@ -340,5 +353,7 @@ show(to)
 show(TimerOutputs.flatten(to))
 
 
-#given that assign_elem is recursive, that could have something to do with the memory consumption
-
+# given that assign_elem is recursive, that could have something to do with the memory consumption
+# according to the full timeroutput it does consume memory rivaling that of the recursive function calls
+# because of that we could be seeing the result of assign_elem being called for each recursive loop
+# another thing is that the find_mrv_elem is faster and faster the deeper the recursion is
