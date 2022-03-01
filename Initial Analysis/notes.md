@@ -1,3 +1,5 @@
-  # Basic Analysis  
-**test_graphs.jl**  
-The only thing I found that might be improved is is_natural(). Otherwise the performance I saw in brief testing didn't warrant further investigation of the other functions.
+# Basic Analysis
+
+Given that assign_elem is recursive, that could have something to do with the memory consumption.  
+According to the full timeroutput it does consume memory rivaling that of the recursive backtracking calls.  
+Another thing is that the find_mrv_elem is faster the deeper the recursion is.
