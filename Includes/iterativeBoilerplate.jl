@@ -34,8 +34,8 @@ include("graph_bank.jl")
 include("autoplot.jl")
 
 # homomorphisms imports
-import Catlab.CategoricalAlgebra.CSets: homomorphisms, homomorphism
-import Catlab.CategoricalAlgebra.CSets: backtracking_search
+import Catlab.CategoricalAlgebra.CSets: BacktrackingState, find_mrv_elem
+import Catlab.CategoricalAlgebra.CSets: assign_elem!, can_assign_elem, unassign_elem!
 
 # backtracking imports
 import Catlab.Theories: SchemaDescType
@@ -44,5 +44,7 @@ numSamples = 500
 BenchmarkTools.DEFAULT_PARAMETERS.samples = numSamples
 
 const to = TimerOutput()
+
+
 
 ################################### Run the above code ###################################
