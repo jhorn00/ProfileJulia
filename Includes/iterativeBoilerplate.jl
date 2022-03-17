@@ -34,7 +34,7 @@ include("graph_bank.jl")
 include("autoplot.jl")
 
 # homomorphisms imports
-import Catlab.CategoricalAlgebra.CSets: BacktrackingState, find_mrv_elem
+import Catlab.CategoricalAlgebra.CSets: BacktrackingState, find_mrv_elem, BacktrackingSearch
 import Catlab.CategoricalAlgebra.CSets: assign_elem!, can_assign_elem, unassign_elem!
 
 # backtracking imports
