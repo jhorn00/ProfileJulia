@@ -28,19 +28,8 @@ h_codom = add_loops(h)
 
 """ Internal state for backtracking search for ACSet homomorphisms.
 """
-struct IterativeBacktrackingState{S <: SchemaDescType,
-  Assign <: NamedTuple, PartialAssign <: NamedTuple,
-  Dom <: StructACSet{S}, Codom <: StructACSet{S}}
-  """ The current assignment, a partially-defined homomorphism of ACSets. """
-  assignment::Assign
-  """ Depth in search tree at which assignments were made. """
-  assignment_depth::Assign
-  """ Inverse assignment for monic components or if finding a monomorphism. """
-  inv_assignment::PartialAssign
-  """ Domain ACSet: the "variables" in the CSP. """
-  dom::Dom
-  """ Codomain ACSet: the "values" in the CSP. """
-  codom::Codom
+struct IterativeBacktrackingState
+  B::BacktrackingState
   # make it iterative
   c::Symbol
   x::Int64
@@ -48,7 +37,6 @@ struct IterativeBacktrackingState{S <: SchemaDescType,
   parts::UnitRange{Int64}
   f::Any
   depth::Int64
-  IterativeBacktrackingState() = new{NamedTuple, NamedTuple, NamedTuple, StructACSet{SchemaDescType}, StructACSet{SchemaDescType}}
 end
 
 ####################################################################################################
@@ -136,7 +124,6 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
     return false
   end
   c, x = mrv_elem
-  println("f: ", typeof(f), "\ndepth: ", typeof(depth))
   # Attempt all assignments of the chosen element.
   Y = state.codom
   for y in parts(Y, c)
@@ -174,13 +161,7 @@ function iterative_backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
   assignment_depth = map(copy, assignment)
   inv_assignment = NamedTuple{Ob}(
     (c in monic ? zeros(Int, nparts(Y, c)) : nothing) for c in Ob)
-  # state = new(IterativeBacktrackingState())
-  # state.assignment = assignment
-  # state.assignment_depth = assignment_depth
-  # state.inv_assignment = inv_assignment
-  # state.dom = X
-  # state.codom = Y
-  state = IterativeBacktrackingState(assignment, assignment_depth, inv_assignment, X, Y)
+  state = BacktrackingState(assignment, assignment_depth, inv_assignment, X, Y)
 
   # Make any initial assignments, failing immediately if inconsistent.
   for (c, c_assignments) in pairs(initial)
@@ -189,10 +170,28 @@ function iterative_backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
     end
   end
 
+
+
+  mrv, mrv_elem = find_mrv_elem(state, 1)
+  if isnothing(mrv_elem)
+    # No unassigned elements remain, so we have a complete assignment.
+    return f(ACSetTransformation(state.assignment, state.dom, state.codom))
+  elseif mrv == 0
+    # An element has no allowable assignment, so we must backtrack.
+    return false
+  end
+  c, x = mrv_elem
+
+  # c::Symbol
+  # x::Int64
+  # Y::Catlab.Graphs.BasicGraphs.Graph
+  # parts::UnitRange{Int64}
+  # f::Any
+  # depth::Int64
+
   # Start the main recursion for backtracking search.
-  state.f = f
-  state.depth = 1
-  iterative_backtracking_search(state)
+  istate = IterativeBacktrackingState(state, c, x, Y, parts(Y, c), f, 1) ###depth might need to adjust or else it would run twice
+  iterative_backtracking_search(istate)
 end
 
 function iterative_backtracking_search(state::IterativeBacktrackingState{S}) where {S}
