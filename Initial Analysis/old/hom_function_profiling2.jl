@@ -7,14 +7,14 @@ using Catlab.Graphics.Graphviz
 using Colors
 using Plots
 using TimerOutputs
-draw(g) = to_graphviz(g, node_labels = true, edge_labels = true)
+draw(g) = to_graphviz(g, node_labels=true, edge_labels=true)
 GraphvizGraphs.to_graphviz(f::ACSetTransformation; kw...) =
     to_graphviz(GraphvizGraphs.to_graphviz_property_graph(f; kw...))
 
 function GraphvizGraphs.to_graphviz_property_graph(f::ACSetTransformation; kw...)
     pg = GraphvizGraphs.to_graphviz_property_graph(dom(f); kw...)
-    vcolors = hex.(range(colorant"#0021A5", stop = colorant"#FA4616", length = nparts(codom(f), :V)))
-    ecolors = hex.(range(colorant"#6C9AC3", stop = colorant"#E28F41", length = nparts(codom(f), :E)))
+    vcolors = hex.(range(colorant"#0021A5", stop=colorant"#FA4616", length=nparts(codom(f), :V)))
+    ecolors = hex.(range(colorant"#6C9AC3", stop=colorant"#E28F41", length=nparts(codom(f), :E)))
     hex.(colormap("Oranges", nparts(codom(f), :V)))
     for v in vertices(dom(f))
         fv = f[:V](v)
@@ -66,7 +66,7 @@ function homomorphisms(X::StructACSet{S}, Y::StructACSet{S}; kw...) where {S}
     end
     results
 end
-homomorphisms(f, X::StructACSet, Y::StructACSet; monic = false, iso = false, initial = (;)) = @timeit to "backtracking() call" backtracking_search(f, X, Y, monic = monic, iso = iso, initial = initial)
+homomorphisms(f, X::StructACSet, Y::StructACSet; monic=false, iso=false, initial=(;)) = @timeit to "backtracking() call" backtracking_search(f, X, Y, monic=monic, iso=iso, initial=initial)
 
 # Backtracking
 # function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
@@ -161,7 +161,7 @@ homomorphisms(f, X::StructACSet, Y::StructACSet; monic = false, iso = false, ini
 # end
 
 function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
-    monic = false, iso = false, initial = (;)) where {Ob,S<:SchemaDescType{Ob}}
+    monic=false, iso=false, initial=(;)) where {Ob,S<:SchemaDescType{Ob}}
     # Fail early if no monic/isos exist on cardinality grounds.
     if iso isa Bool
         iso = iso ? Ob : ()
@@ -196,15 +196,18 @@ end
 
 # Recursive backtracking_search function
 function backtracking_search(f, state::BacktrackingState, depth::Int)
+    # if depth == 17
+    #     return true
+    # end
     println("runs")
     # Choose the next unassigned element.
     mrv, mrv_elem = find_mrv_elem(state, depth)
     if isnothing(mrv_elem)
-        println("isnothing, returns")
+        println("isnothing")
         # No unassigned elements remain, so we have a complete assignment.
         return f(ACSetTransformation(state.assignment, state.dom, state.codom))
     elseif mrv == 0
-        println("mrv == 0, returns")
+        println("mrv == 0")
         # An element has no allowable assignment, so we must backtrack.
         return false
     end
@@ -215,15 +218,24 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
         println("y: ", y)
         println("depth: ", depth)
         println("length p: ", parts(Y, c))
+        # if depth == 16
+        #     println("State:\n", state, "\n")
+        #     println("depth:\n", depth, "\n")
+        #     println("Val{c}:\n", Val{c}, "\n")
+        #     println("x:\n", x, "\n")
+        #     println("y:\n", y, "\n")
+        # end
+        # println("c: ", c, " x: ", x)
+        println("currentState.c: ", c, " currentState.x: ", x)
         if assign_elem!(state, depth, Val{c}, x, y)
-            println("assign elem true")
+            println("assign_elem")
             if backtracking_search(f, state, depth + 1)
-                println("last state finished as true, returning true")
+                println("ret is true")
                 return true
             end
         end
         unassign_elem!(state, depth, Val{c}, x)
-        println("unassigned")
+        println("unassign_elem")
     end
     println("outer false")
     return false
@@ -353,7 +365,8 @@ large7 = apex(product(a_sparse_eight, add_loops(a_sparse_eight2)))
 homomorphism(large1, add_loops(a_sparse_five))
 homomorphism(large2, add_loops(a_sparse_three))
 homomorphism(large3, add_loops(a_sparse_seven))
-homomorphism(large4, add_loops(a_sparse_eight))
+h = homomorphism(large4, add_loops(a_sparse_eight))
+draw(h)
 homomorphism(large5, add_loops(large2))
 homomorphism(large6, add_loops(large3))
 homomorphism(large7, add_loops(large4))

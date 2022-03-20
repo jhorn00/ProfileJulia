@@ -172,93 +172,120 @@ function iterative_backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
     iterative_backtracking_search(f, state, 1)
 end
 
-function iterative_backtracking_search(f, state::BacktrackingState, depth::Int) # SHOULD BE POSSIBLE TO JUST PASS F ONCE - fix later
-    # istate = IterativeBacktrackingState(c, x, p, false, Iterators.Stateful(p))
-    # push!(stk, istate)
+function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
     ##################################### HANDLE FIRST CASE #####################################
     # Choose the next unassigned element.
-    mrv1, mrv_elem1 = find_mrv_elem(state, depth)
-    if isnothing(mrv_elem1)
+    mrv, mrv_elem = find_mrv_elem(state, depth)
+    if isnothing(mrv_elem)
         # No unassigned elements remain, so we have a complete assignment.
         return f(ACSetTransformation(state.assignment, state.dom, state.codom))
-    elseif mrv1 == 0
+    elseif mrv == 0
         # An element has no allowable assignment, so we must backtrack.
         return false
     end
-    c1, x1 = mrv_elem1
+    c, x = mrv_elem
     # Attempt all assignments of the chosen element.
-    Y1 = state.codom
-    p1 = parts(Y1, c1)
-    istate = IterativeBacktrackingState(c1, x1, p1, false, Iterators.Stateful(p1), 1)
+    Y = state.codom
+    p = parts(Y, c)
+    istate = IterativeBacktrackingState(c, x, p, false, Iterators.Stateful(p), 1)
     push!(stk, istate)
-
+    justPopped = false
+    enteredFor = true
     while !isempty(stk)
         println("runs")
         currentState = first(stk)
-        # println("top of loop ", currentState.depth)
-        # didSomething = false
+
+        # if currentState.depth == 17
+        #     break
+        # end
+
+        # if !early
+        #     pop!(stk)
+        #     justPopped = true
+        #     continue
+        # else
+        #     early = false
+        # end
+        if !enteredFor
+            pop!(stk)
+            justPopped = true
+            enteredFor = true
+            continue
+        else
+            enteredFor = false
+        end
+
+
         # Choose the next unassigned element.
         mrv, mrv_elem = find_mrv_elem(state, currentState.depth)
         if isnothing(mrv_elem)
             println("isnothing")
             # No unassigned elements remain, so we have a complete assignment.
-            # return f(ACSetTransformation(state.assignment, state.dom, state.codom))
             currentState.ret = f(ACSetTransformation(state.assignment, state.dom, state.codom))
-            # println("This should be true, popped: ", f(ACSetTransformation(state.assignment, state.dom, state.codom)))
             pop!(stk)
-            # break
+            justPopped = true
+            enteredFor = true
             continue
         elseif mrv == 0
             println("mrv == 0")
             # An element has no allowable assignment, so we must backtrack.
-            # return false
             pop!(stk)
-            # break
+            justPopped = true
+            enteredFor = true
             continue
         end
-        c, x = mrv_elem
-        # Attempt all assignments of the chosen element.
-        # should be state i think
-        Y = state.codom
-        p = parts(Y, c)
-        currentState.parts = p
-        currentState.iterator = Iterators.Stateful(p)
-        # println("before for loop, iterator: ", first(stk).iterator)
+
+        if !justPopped
+            c, x = mrv_elem
+            # Attempt all assignments of the chosen element.
+            Y = state.codom
+            p = parts(Y, c)
+            currentState.parts = p
+            currentState.iterator = Iterators.Stateful(p)
+        else
+            justPopped = false
+        end
         for y in first(stk).iterator
+            enteredFor = true
+            if y == 1
+                currentState.c = c
+                currentState.x = x
+            end
             println("y: ", y)
             println("depth: ", currentState.depth)
             println("length p: ", p)
-            if assign_elem!(state, currentState.depth, Val{c}, x, y)
+            # if currentState.depth == 16
+            #     # println("State:\n", state, "\n")
+            #     # println("currentState.depth:\n", currentState.depth, "\n")
+            #     # println("Val{c}:\n", Val{c}, "\n")
+            #     # println("x:\n", x, "\n")
+            #     # println("y:\n", y, "\n")
+            #     println(state.assignment)
+            # end
+            # println("c: ", c, " x: ", x)
+            println("currentState.c: ", currentState.c, " currentState.x: ", currentState.x)
+            if assign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x, y)
                 println("assign_elem")
                 # && return true
                 if currentState.ret
                     println("ret is true")
-                    pop!(stk)
+                    pop!(stk)#################################################################maybe here too
                     currentState = first(stk)
                     currentState.ret = true
                     # didSomething = true
                     break
                 end
-                # recursive call
-                # Print each state!
-                # println("This will be our p: ", p)
-                # println("This will be our stateful p: ", Iterators.Stateful(p))
-                # println("This will be our depth: ", currentState.depth + 1)
                 newstate = IterativeBacktrackingState(c, x, p, false, Iterators.Stateful(p), currentState.depth + 1)
                 push!(stk, newstate)
-                # println("pushed new state")
                 break
             end
-            unassign_elem!(state, currentState.depth, Val{c}, x)
+            unassign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x)
             println("unassign_elem")
         end
         # return false
         if currentState.depth == 1 && currentState.ret
             return currentState.ret
         end
-        # else
-        #     pop!(stk)
-        # end
     end
     println("outer false")
     return false
@@ -278,6 +305,8 @@ homomorphism(large1, add_loops(a_sparse_five))
 homomorphism(large2, add_loops(a_sparse_three))
 homomorphism(large3, add_loops(a_sparse_seven))
 h = homomorphism(large4, add_loops(a_sparse_eight))
+draw(h)
+
 homomorphism(large5, add_loops(large2))
 homomorphism(large6, add_loops(large3))
 homomorphism(large7, add_loops(large4))
@@ -290,20 +319,3 @@ homomorphism(a_sparse_eight, add_loops(a_sparse_seven))
 homomorphism(a_sparse_eight2, add_loops(a_sparse_six))
 homomorphism(a_sparse_five, add_loops(a_sparse_three))
 homomorphism(a_sparse_six2, add_loops(a_sparse_four))
-draw(h)
-# a = Iterators.Stateful("abcdef");
-# println(a)
-
-# c is V or E
-# x often appears as an Int
-# Y is a graph
-
-# This is c:
-# Symbol
-# This is x:
-# Int64
-# this is Y:
-# Catlab.Graphs.BasicGraphs.Graph
-# Parts(Y, c) is a UnitRange{Int64}
-
-# used typeof to get them
