@@ -28,15 +28,17 @@ h_codom = add_loops(h)
 
 """ Internal state for backtracking search for ACSet homomorphisms.
 """
-struct IterativeBacktrackingState
+mutable struct IterativeBacktrackingState
+  # original components
   B::BacktrackingState
-  # make it iterative
-  c::Symbol
-  x::Int64
-  Y::Catlab.Graphs.BasicGraphs.Graph
-  parts::UnitRange{Int64}
   f::Any
   depth::Int64
+  # needed to resume
+  c::Symbol
+  x::Int64
+  parts::Any
+  ret::Bool
+  iterator::Iterators.Stateful
 end
 
 ####################################################################################################
@@ -189,45 +191,78 @@ function iterative_backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
   # f::Any
   # depth::Int64
 
+
+  # # original components
+  # B::BacktrackingState
+  # f::Any
+  # depth::Int64
+  # # needed to resume
+  # c::Symbol
+  # x::Int64
+  # parts::Any
+
+
   # Start the main recursion for backtracking search.
-  istate = IterativeBacktrackingState(state, c, x, Y, parts(Y, c), f, 1) ###depth might need to adjust or else it would run twice
+  istate = IterativeBacktrackingState(state, f, 1, c, x, parts(state.codom, c), false, Iterators.Stateful(parts(state.codom, c))) ###depth might need to adjust or else it would run twice
   iterative_backtracking_search(istate)
 end
 
-function iterative_backtracking_search(state::IterativeBacktrackingState{S}) where {S}
-  stk.push(state)
+function iterative_backtracking_search(state::IterativeBacktrackingState) # SHOULD BE POSSIBLE TO JUST PASS F ONCE - fix later
+  push!(stk, state)
   while !isempty(stk)
-    ####################################################################################################
-    # This part can remain the same for now.
-    ####################################################################################################
-    # Choose the next unassigned element.
-    state.mrv, state.mrv_elem = find_mrv_elem(state, state.depth)
-    if isnothing(state.mrv_elem)
-      # No unassigned elements remain, so we have a complete assignment.
-      return state.f(ACSetTransformation(state.assignment, state.dom, state.codom))
-    elseif state.mrv == 0
-      # An element has no allowable assignment, so we must backtrack.
+    currentState = first(stk)
+    # Attempt all assignments of the chosen element.
+    Y = currentState.B.codom
+    for y in currentState.iterator
+      println("y: ", y)
+      println("depth: ", currentState.depth)
+      if currentState.depth == 20
+        break
+      end
+      if assign_elem!(currentState.B, currentState.depth, Val{currentState.c}, currentState.x, y)
+        println("assign_elem")
+        if currentState.ret
+          pop!(stk)
+          currentState = first(stk)
+          currentState.ret = true
+          break
+        end
+        # make copy and iterate depth by 1
+        # newState = copy(state) # This new one gets a depth of state.depth + 1
+        # Choose the next unassigned element.
+        mrv, mrv_elem = find_mrv_elem(currentState.B, currentState.depth) # pass in the BacktrackingSearch obj
+        println("mrv_elem: ", mrv_elem)
+        if isnothing(mrv_elem)
+          # No unassigned elements remain, so we have a complete assignment.
+          ans = state.f(ACSetTransformation(currentState.B.assignment, currentState.B.dom, currentState.B.codom))
+          println("\n\n\n\nThe ACSET thing returns ", ans)
+          currentState.ret = ans
+          break # breaks out of for loop
+        # return ans
+        elseif mrv == 0
+          # An element has no allowable assignment, so we must backtrack.
+          # return false
+          pop!(stk)
+          break # breaks out of for loop
+        end
+        c, x = mrv_elem
+        p = parts(Y, c)
+        println("new thing made")
+        newState = IterativeBacktrackingState(currentState.B, currentState.f, currentState.depth + 1, c, x, p, false, Iterators.Stateful(p))
+        # need to investigate this new state but be able to return to this spot
+        push!(stk, newState)
+        break
+        # if iterative_backtracking_search(newState)
+        # return true
+        # end
+      end
+      unassign_elem!(currentState.B, currentState.depth, Val{currentState.c}, currentState.x)
+    end
+    # return false
+    pop!(stk)
+    if currentState.depth == 20
       return false
     end
-    state.c, state.x = state.mrv_elem
-
-    ####################################################################################################
-    # This part will see changes.
-    ####################################################################################################
-    # Attempt all assignments of the chosen element.
-    state.Y = state.codom
-    for y in parts(state.Y, state.c)
-      if assign_elem!(state, state.depth, Val{state.c}, state.x, y)
-        # make copy and iterate depth by 1
-        newState = copy(state)
-        newState.depth = newState.depth + 1
-        if iterative_backtracking_search(newState)
-          return true
-        end
-      end
-      unassign_elem!(state, state.depth, Val{state.c}, state.x)
-    end
-    return false
   end
 end
 

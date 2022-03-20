@@ -196,12 +196,15 @@ end
 
 # Recursive backtracking_search function
 function backtracking_search(f, state::BacktrackingState, depth::Int)
+    println("runs")
     # Choose the next unassigned element.
     mrv, mrv_elem = find_mrv_elem(state, depth)
     if isnothing(mrv_elem)
+        println("isnothing, returns")
         # No unassigned elements remain, so we have a complete assignment.
         return f(ACSetTransformation(state.assignment, state.dom, state.codom))
     elseif mrv == 0
+        println("mrv == 0, returns")
         # An element has no allowable assignment, so we must backtrack.
         return false
     end
@@ -209,11 +212,20 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
     # Attempt all assignments of the chosen element.
     Y = state.codom
     for y in parts(Y, c)
-        assign_elem!(state, depth, Val{c}, x, y) &&
-            backtracking_search(f, state, depth + 1) &&
-            return true
+        println("y: ", y)
+        println("depth: ", depth)
+        println("length p: ", parts(Y, c))
+        if assign_elem!(state, depth, Val{c}, x, y)
+            println("assign elem true")
+            if backtracking_search(f, state, depth + 1)
+                println("last state finished as true, returning true")
+                return true
+            end
+        end
         unassign_elem!(state, depth, Val{c}, x)
+        println("unassigned")
     end
+    println("outer false")
     return false
 end
 
@@ -313,6 +325,23 @@ end
 
 
 # after this go in and run the same datasets but with benchmarking being called on inside functions
+g = @acset Graphs.Graph begin
+    V = 5
+    E = 5
+    src = [1, 2, 3, 3, 4]
+    tgt = [3, 3, 4, 5, 5]
+end
+g_codom = add_loops(g)
+# draw(g)
+h = @acset Graphs.Graph begin
+    V = 3
+    E = 3
+    src = [1, 1, 2]
+    tgt = [2, 3, 3]
+end
+h_codom = add_loops(h)
+gtoh = homomorphism(g, h_codom)
+
 
 reset_timer!(to::TimerOutput)
 component = path_graph(ReflexiveGraph, 2)
