@@ -264,7 +264,31 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int) 
 end
 
 gtoh = homomorphism(g, h_codom)
-println(gtoh)
+
+large1 = apex(product(a_sparse_three, add_loops(a_sparse_four)))
+large2 = apex(product(a_sparse_four, add_loops(a_sparse_five)))
+large3 = apex(product(a_sparse_five, add_loops(a_sparse_six)))
+large4 = apex(product(a_sparse_six, add_loops(a_sparse_six2)))
+large5 = apex(product(a_sparse_six2, add_loops(a_sparse_seven)))
+large6 = apex(product(a_sparse_seven, add_loops(a_sparse_eight)))
+large7 = apex(product(a_sparse_eight, add_loops(a_sparse_eight2)))
+
+homomorphism(large1, add_loops(a_sparse_five))
+homomorphism(large2, add_loops(a_sparse_three))
+homomorphism(large3, add_loops(a_sparse_seven))
+homomorphism(large4, add_loops(a_sparse_eight))
+homomorphism(large5, add_loops(large2))
+homomorphism(large6, add_loops(large3))
+homomorphism(large7, add_loops(large4))
+homomorphism(large1, add_loops(a_sparse_three))
+homomorphism(large2, add_loops(a_sparse_six))
+homomorphism(large3, add_loops(a_sparse_eight))
+homomorphism(large4, add_loops(large1))
+homomorphism(large5, add_loops(large3))
+homomorphism(a_sparse_eight, add_loops(a_sparse_seven))
+homomorphism(a_sparse_eight2, add_loops(a_sparse_six))
+homomorphism(a_sparse_five, add_loops(a_sparse_three))
+homomorphism(a_sparse_six2, add_loops(a_sparse_four))
 
 # a = Iterators.Stateful("abcdef");
 # println(a)
