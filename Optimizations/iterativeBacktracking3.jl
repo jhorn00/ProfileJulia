@@ -195,7 +195,7 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
         println("runs")
         currentState = first(stk)
 
-        # if currentState.depth == 17
+        # if currentState.depth == 20
         #     break
         # end
 
@@ -207,6 +207,7 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
         #     early = false
         # end
         if !enteredFor
+            println("popped for")
             pop!(stk)
             justPopped = true
             enteredFor = true
@@ -222,6 +223,7 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
             println("isnothing")
             # No unassigned elements remain, so we have a complete assignment.
             currentState.ret = f(ACSetTransformation(state.assignment, state.dom, state.codom))
+            println("popped nothing")
             pop!(stk)
             justPopped = true
             enteredFor = true
@@ -229,6 +231,7 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
         elseif mrv == 0
             println("mrv == 0")
             # An element has no allowable assignment, so we must backtrack.
+            println("popped mrv")
             pop!(stk)
             justPopped = true
             enteredFor = true
@@ -269,6 +272,7 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
                 # && return true
                 if currentState.ret
                     println("ret is true")
+                    println("popped true")
                     pop!(stk)#################################################################maybe here too
                     currentState = first(stk)
                     currentState.ret = true
@@ -277,15 +281,23 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
                 end
                 newstate = IterativeBacktrackingState(c, x, p, false, Iterators.Stateful(p), currentState.depth + 1)
                 push!(stk, newstate)
+                println("pushed")
                 break
             end
             unassign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x)
             println("unassign_elem")
+            if y == length(first(stk).parts)
+                pop!(stk)
+                justPopped = true
+            end
         end
         # return false
         if currentState.depth == 1 && currentState.ret
             return currentState.ret
         end
+        # if currentState.depth == 20
+        #     break
+        # end
     end
     println("outer false")
     return false
@@ -313,7 +325,7 @@ homomorphism(large7, add_loops(large4))
 homomorphism(large1, add_loops(a_sparse_three))
 homomorphism(large2, add_loops(a_sparse_six))
 homomorphism(large3, add_loops(a_sparse_eight))
-homomorphism(large4, add_loops(large1))
+homomorphism(large4, add_loops(large1)) # THIS ONE BREAKS
 homomorphism(large5, add_loops(large3))
 homomorphism(a_sparse_eight, add_loops(a_sparse_seven))
 homomorphism(a_sparse_eight2, add_loops(a_sparse_six))
