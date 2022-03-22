@@ -28,8 +28,6 @@ compareFunctions(large1, a_sparse_five)
 compareFunctions(large2, a_sparse_three)
 compareFunctions(large3, a_sparse_seven)
 compareFunctions(large4, a_sparse_eight)
-draw(h)
-
 compareFunctions(large5, large2)
 compareFunctions(large6, large3)
 compareFunctions(large7, large4)
