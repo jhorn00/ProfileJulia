@@ -1,30 +1,6 @@
-# This file aims to convert backtracking_search from recursive to iterative.
-# This is the first attempt, using a stack.
-
-# After including this if you wish to use TimerOutputs you should reset_timer
+# This is used to test homs with different functions
 include("../Includes/iterativeBoilerplate.jl")
 using DataStructures
-
-g = @acset Graphs.Graph begin
-    V = 5
-    E = 5
-    src = [1, 2, 3, 3, 4]
-    tgt = [3, 3, 4, 5, 5]
-end
-g_codom = add_loops(g)
-# draw(g)
-h = @acset Graphs.Graph begin
-    V = 3
-    E = 3
-    src = [1, 1, 2]
-    tgt = [2, 3, 3]
-end
-h_codom = add_loops(h)
-# draw(h)
-
-####################################################################################################
-# This is the struct we can use for the state
-####################################################################################################
 
 """ Internal state for backtracking search for ACSet homomorphisms.
 """
@@ -38,18 +14,39 @@ mutable struct IterativeBacktrackingState
     depth::Int64
 end
 
-####################################################################################################
-# Our version of the call stack. It can be moved to the initial function.
-####################################################################################################
-
 stk = Stack{IterativeBacktrackingState}()
+
+ihomomorphism(X::ACSet, Y::ACSet; alg=BacktrackingSearch(), kw...) =
+    ihomomorphism(X, Y, alg; kw...)
+
+function ihomomorphism(X::ACSet, Y::ACSet, alg::BacktrackingSearch; kw...)
+    result = nothing
+    iterative_backtracking_search(X, Y; kw...) do α
+        result = α
+        return true
+    end
+    result
+end
+
+ihomomorphisms(X::ACSet, Y::ACSet; alg=BacktrackingSearch(), kw...) =
+    ihomomorphisms(X, Y, alg; kw...)
+
+function ihomomorphisms(X::StructACSet{S}, Y::StructACSet{S},
+    alg::BacktrackingSearch; kw...) where {S}
+    results = ACSetTransformation{S}[]
+    iterative_backtracking_search(X, Y; kw...) do α
+        push!(results, map_components(deepcopy, α))
+        return false
+    end
+    results
+end
 
 homomorphism(X::ACSet, Y::ACSet; alg=BacktrackingSearch(), kw...) =
     homomorphism(X, Y, alg; kw...)
 
 function homomorphism(X::ACSet, Y::ACSet, alg::BacktrackingSearch; kw...)
     result = nothing
-    iterative_backtracking_search(X, Y; kw...) do α
+    backtracking_search(X, Y; kw...) do α
         result = α
         return true
     end
@@ -62,16 +59,12 @@ homomorphisms(X::ACSet, Y::ACSet; alg=BacktrackingSearch(), kw...) =
 function homomorphisms(X::StructACSet{S}, Y::StructACSet{S},
     alg::BacktrackingSearch; kw...) where {S}
     results = ACSetTransformation{S}[]
-    iterative_backtracking_search(X, Y; kw...) do α
+    backtracking_search(X, Y; kw...) do α
         push!(results, map_components(deepcopy, α))
         return false
     end
     results
 end
-
-####################################################################################################
-# This is the initial call
-####################################################################################################
 
 function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
     monic=false, iso=false, initial=(;)) where {Ob,S<:SchemaDescType{Ob}}
@@ -314,39 +307,29 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
         if currentState.depth == 1 && currentState.ret
             return currentState.ret
         end
-        if currentState.depth == 15
-            break
-        end
+        # if currentState.depth == 15
+        #     break
+        # end
     end
     println("outer false")
     return false
 end
 
-gtoh = homomorphism(g, h_codom)
-
-large1 = apex(product(a_sparse_three, add_loops(a_sparse_four)))
-large2 = apex(product(a_sparse_four, add_loops(a_sparse_five)))
-large3 = apex(product(a_sparse_five, add_loops(a_sparse_six)))
-large4 = apex(product(a_sparse_six, add_loops(a_sparse_six2)))
-large5 = apex(product(a_sparse_six2, add_loops(a_sparse_seven)))
-large6 = apex(product(a_sparse_seven, add_loops(a_sparse_eight)))
-large7 = apex(product(a_sparse_eight, add_loops(a_sparse_eight2)))
-
-homomorphism(large1, add_loops(a_sparse_five))
-homomorphism(large2, add_loops(a_sparse_three))
-homomorphism(large3, add_loops(a_sparse_seven))
-h = homomorphism(large4, add_loops(a_sparse_eight))
-draw(h)
-
-homomorphism(large5, add_loops(large2))
-homomorphism(large6, add_loops(large3))
-homomorphism(large7, add_loops(large4))
-homomorphism(large1, add_loops(a_sparse_three))
-homomorphism(large2, add_loops(a_sparse_six))
-homomorphism(large3, add_loops(a_sparse_eight))
-homomorphism(large4, add_loops(large1)) # THIS ONE BREAKS - When looking at it the values are wrong for the depth
-homomorphism(large5, add_loops(large3))
-homomorphism(a_sparse_eight, add_loops(a_sparse_seven))
-homomorphism(a_sparse_eight2, add_loops(a_sparse_six))
-homomorphism(a_sparse_five, add_loops(a_sparse_three))
-homomorphism(a_sparse_six2, add_loops(a_sparse_four))
+# Compares the recursive and iterative solutions
+# To my knowledge the ACSetTransformation has only 3 values - James Horn
+function compareFunctions(acset1, acset2)
+    original = homomorphism(acset1, add_loops(acset2))
+    iterative = ihomomorphism(acset1, add_loops(acset2))
+    println("\n==================\nComparison Results\n------------------")
+    if original == iterative
+        println("Equivalent\n==================\n")
+    elseif original.components != iterative.components
+        println("The components differ.\n------------------")
+        println("Original Hom method result:\n", original.components)
+        println("------------------\nIterative Hom method result:\n", iterative.components, "\n==================\n")
+    else
+        println("Unexpected error encountered.\n------------------")
+        println("Original Hom method result:\n", original)
+        println("------------------\nIterative Hom method result:\n", iterative, "\n==================\n")
+    end
+end

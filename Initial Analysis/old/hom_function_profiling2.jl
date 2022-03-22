@@ -196,10 +196,13 @@ end
 
 # Recursive backtracking_search function
 function backtracking_search(f, state::BacktrackingState, depth::Int)
-
+    if depth == 15
+        return true
+    end
     println("runs")
     # Choose the next unassigned element.
     mrv, mrv_elem = find_mrv_elem(state, depth)
+    println("mrv: ", mrv)
     if isnothing(mrv_elem)
         println("isnothing")
         # No unassigned elements remain, so we have a complete assignment.
@@ -225,6 +228,9 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
         # end
         # println("c: ", c, " x: ", x)
         println("currentState.c: ", c, " currentState.x: ", x)
+        if depth == 12 && (y == 9 || y == 8 || y == 7)
+            println("state: ", state)
+        end
         if assign_elem!(state, depth, Val{c}, x, y)
             println("assign_elem")
             if backtracking_search(f, state, depth + 1)
@@ -370,7 +376,7 @@ h = homomorphism(large4, add_loops(a_sparse_eight))
 draw(h)
 homomorphism(large5, add_loops(large2))
 homomorphism(large6, add_loops(large3))
-homomorphism(large7, add_loops(large4)) #this one
+homomorphism(large7, add_loops(large4))
 homomorphism(large1, add_loops(a_sparse_three))
 homomorphism(large2, add_loops(a_sparse_six))
 homomorphism(large3, add_loops(a_sparse_eight))
