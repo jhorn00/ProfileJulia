@@ -196,7 +196,7 @@ end
 
 # Recursive backtracking_search function
 function backtracking_search(f, state::BacktrackingState, depth::Int)
-    if depth == 15
+    if depth == 8
         return true
     end
     println("runs")
@@ -218,7 +218,7 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
     for y in parts(Y, c)
         println("y: ", y)
         println("depth: ", depth)
-        println("length p: ", parts(Y, c))
+        # println("length p: ", parts(Y, c))
         # if depth == 16
         #     println("State:\n", state, "\n")
         #     println("depth:\n", depth, "\n")
@@ -227,10 +227,12 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
         #     println("y:\n", y, "\n")
         # end
         # println("c: ", c, " x: ", x)
-        println("currentState.c: ", c, " currentState.x: ", x)
-        if depth == 12 && (y == 9 || y == 8 || y == 7)
-            println("state: ", state)
-        end
+        # println("currentState.c: ", c, " currentState.x: ", x)
+
+        # if depth > 5 && depth < 13
+        println("state: ", state)
+        # end
+        # println(state.assignment)
         if assign_elem!(state, depth, Val{c}, x, y)
             println("assign_elem")
             if backtracking_search(f, state, depth + 1)
@@ -242,9 +244,9 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
         println("unassign_elem")
     end
     println("outer false")
-    if depth == 21
-        return true
-    end
+    # if depth == 9
+    #     return true
+    # end
     return false
 end
 

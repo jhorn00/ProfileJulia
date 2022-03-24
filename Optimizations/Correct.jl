@@ -2,6 +2,14 @@
 include("../Includes/iterativeBoilerplate.jl")
 using DataStructures
 
+mutable struct CaptureState
+    state::BacktrackingState
+    y::Any
+    depth::Int64
+    c::Any
+    x::Any
+end
+
 """ Internal state for backtracking search for ACSet homomorphisms.
 """
 mutable struct IterativeBacktrackingState
@@ -119,6 +127,7 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
     # Attempt all assignments of the chosen element.
     Y = state.codom
     for y in parts(Y, c)
+        enqueue!(original_states, CaptureState(state, y, depth, c, x))
         assign_elem!(state, depth, Val{c}, x, y) &&
             backtracking_search(f, state, depth + 1) &&
             return true
@@ -277,6 +286,7 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
             if currentState.depth == 12 && (y == 9 || y == 8 || y == 7)
                 println("state: ", state)
             end
+            enqueue!(iterative_states, CaptureState(state, y, currentState.depth, currentState.c, currentState.x))
             if assign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x, y)
                 # assigned = true
                 println("assign_elem")
@@ -333,3 +343,44 @@ function compareFunctions(acset1, acset2)
         println("------------------\nIterative Hom method result:\n", iterative, "\n==================\n")
     end
 end
+
+
+
+# Trying to figure out this tricky bug
+original_states = Queue{Any}()
+iterative_states = Queue{Any}()
+
+large1 = apex(product(a_sparse_three, add_loops(a_sparse_four)))
+large4 = apex(product(a_sparse_six, add_loops(a_sparse_six2)))
+homomorphism(large4, add_loops(large1))
+ihomomorphism(large4, add_loops(large1))
+
+length(original_states)
+length(iterative_states)
+
+function firstDivergence()
+    original_history::Any = nothing
+    iterative_history::Any = nothing
+    while !isempty(original_states) && !isempty(iterative_states)
+        println("runs")
+        if first(original_states).depth != first(iterative_states).depth
+            println("\n\n\nDivergence encountered.\nOriginal:\ny: ", first(original_states).y, "\ndepth: ", first(original_states).depth)
+            println("Iterative:\ny: ", first(iterative_states).y, "\ndepth: ", first(iterative_states).depth)
+            println("\nOriginal:\n", first(original_states).state.assignment)
+            println("\nIterative:\n", first(iterative_states).state.assignment)
+            println("\n\n\nPrevious:\n")
+            println("Original:\n", original_history)
+            println("\nIterative:\n", iterative_history)
+            break
+        else
+            original_history = first(original_states).state.assignment
+            iterative_history = first(iterative_states).state.assignment
+        end
+        dequeue!(original_states)
+        dequeue!(iterative_states)
+    end
+end
+firstDivergence()
+
+println(last(original_states))
+println(first(original_states))

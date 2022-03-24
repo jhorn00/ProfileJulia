@@ -195,20 +195,11 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
     while !isempty(stk)
         println("runs")
         currentState = first(stk)
-
         # if currentState.depth == 20
         #     break
         # end
-
-        # if !early
-        #     pop!(stk)
-        #     justPopped = true
-        #     continue
-        # else
-        #     early = false
-        # end
         if !enteredFor
-            println("popped for")
+            # println("popped for")
             # if assigned
             #     assigned = false
             #     unassign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x)
@@ -224,7 +215,7 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
 
         # Choose the next unassigned element.
         mrv, mrv_elem = find_mrv_elem(state, currentState.depth)
-        println("mrv: ", mrv)
+        # println("mrv: ", mrv)
         if isnothing(mrv_elem)
             println("isnothing")
             # if assigned
@@ -233,7 +224,7 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
             # end
             # No unassigned elements remain, so we have a complete assignment.
             currentState.ret = f(ACSetTransformation(state.assignment, state.dom, state.codom))
-            println("popped nothing")
+            # println("popped nothing")
             pop!(stk)
             justPopped = true
             enteredFor = true
@@ -241,11 +232,13 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
         elseif mrv == 0
             println("mrv == 0")
             # An element has no allowable assignment, so we must backtrack.
-            println("popped mrv")
+            # println("popped mrv")
             # if assigned
             #     assigned = false
             #     unassign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x)
             # end
+            println("unassign_elem")
+            unassign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x)
             pop!(stk)
             justPopped = true
             enteredFor = true
@@ -270,27 +263,20 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
             end
             println("y: ", y)
             println("depth: ", currentState.depth)
-            println("length p: ", p)
-            # if currentState.depth == 16
-            #     # println("State:\n", state, "\n")
-            #     # println("currentState.depth:\n", currentState.depth, "\n")
-            #     # println("Val{c}:\n", Val{c}, "\n")
-            #     # println("x:\n", x, "\n")
-            #     # println("y:\n", y, "\n")
-            #     println(state.assignment)
+            # println("length p: ", p)
+            # println("currentState.c: ", currentState.c, " currentState.x: ", currentState.x)
+
+            # if currentState.depth > 5 && currentState.depth < 13
+            println("state: ", state)
             # end
-            # println("c: ", c, " x: ", x)
-            println("currentState.c: ", currentState.c, " currentState.x: ", currentState.x)
-            if currentState.depth == 12 && (y == 9 || y == 8 || y == 7)
-                println("state: ", state)
-            end
+            # println(state.assignment)
             if assign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x, y)
                 # assigned = true
                 println("assign_elem")
                 # && return true
                 if currentState.ret
                     println("ret is true")
-                    println("popped true")
+                    # println("popped true")
                     pop!(stk)#################################################################maybe here too
                     currentState = first(stk)
                     currentState.ret = true
@@ -314,7 +300,7 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
         if currentState.depth == 1 && currentState.ret
             return currentState.ret
         end
-        if currentState.depth == 15
+        if currentState.depth == 7
             break
         end
     end
