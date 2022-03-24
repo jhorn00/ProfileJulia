@@ -171,13 +171,13 @@ function iterative_backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
         end
     end
     # Start the main recursion for backtracking search.
-    iterative_backtracking_search(f, state, 1)
+    iterative_backtracking_search(f, state)
 end
 
-function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
+function iterative_backtracking_search(f, state::BacktrackingState)
     ##################################### HANDLE FIRST CASE #####################################
     # Choose the next unassigned element.
-    mrv, mrv_elem = find_mrv_elem(state, depth)
+    mrv, mrv_elem = find_mrv_elem(state, 1)
     if isnothing(mrv_elem)
         # No unassigned elements remain, so we have a complete assignment.
         return f(ACSetTransformation(state.assignment, state.dom, state.codom))
@@ -185,46 +185,39 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
         # An element has no allowable assignment, so we must backtrack.
         return false
     end
+    # Construct first IterativeBacktrackingState and add it to the stack.
     c, x = mrv_elem
-    # Attempt all assignments of the chosen element.
     Y = state.codom
     p = parts(Y, c)
     istate = IterativeBacktrackingState(c, x, p, false, Iterators.Stateful(p), 1)
     push!(stk, istate)
+    # Create tracker variables.
     justPopped = false
-    enteredFor = true
     while !isempty(stk)
+        # Get currentState based on stack.
         currentState = first(stk)
-        if !enteredFor
+        # Check what could help us skip additional commands first.
+        # If the iterator is over, pop.
+        if isempty(currentState.iterator)
             pop!(stk)
             justPopped = true
-            enteredFor = true
             continue
-        else
-            enteredFor = false
         end
-
         # Choose the next unassigned element.
         mrv, mrv_elem = find_mrv_elem(state, currentState.depth)
         if isnothing(mrv_elem)
             # No unassigned elements remain, so we have a complete assignment.
             currentState.ret = f(ACSetTransformation(state.assignment, state.dom, state.codom))
-            pop!(stk)
-            justPopped = true
-            enteredFor = true
-            # continue <- was this, but with iterative we can break
-            continue
+            return true
         elseif mrv == 0
             # An element has no allowable assignment, so we must backtrack.
             pop!(stk)
             justPopped = true
-            enteredFor = true
             continue
         end
-
+        # Values should be set if we are visiting this depth and state for the first time.
         if !justPopped
             c, x = mrv_elem
-            # Attempt all assignments of the chosen element.
             Y = state.codom
             p = parts(Y, c)
             currentState.parts = p
@@ -232,8 +225,9 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
         else
             justPopped = false
         end
+        # Attempt all assignments of the chosen element.
         for y in first(stk).iterator
-            enteredFor = true
+            # set correct c and x if we are entering under a new depth
             if y == 1
                 currentState.c = c
                 currentState.x = x
@@ -252,11 +246,6 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
                 break
             end
             unassign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x)
-            # assigned = false
-            if y == length(first(stk).parts)
-                pop!(stk)
-                justPopped = true
-            end
         end
         # return false
         if currentState.depth == 1 && currentState.ret
@@ -312,7 +301,7 @@ homomorphism(large1, add_loops(a_sparse_three))
 ihomomorphism(large1, add_loops(a_sparse_three))
 
 
-
+Base.copy(s::BacktrackingState) = BacktrackingState(s.assignment, s.assignment_depth, s.inv_assignment, s.dom, s.codom)
 
 original_states = Queue{Any}()
 iterative_states = Queue{Any}()
@@ -321,11 +310,13 @@ iterative_states = Queue{Any}()
 homomorphism(large4, add_loops(large1))
 ihomomorphism(large4, add_loops(large1))
 ########################################
+# it gets nothing in the stateful iterator sometimes
 
 length(original_states)
 length(iterative_states)
 
 function firstDivergence()
+    equivalent = true
     original_history::Any = nothing
     iterative_history::Any = nothing
     while !isempty(original_states) && !isempty(iterative_states)
@@ -340,6 +331,7 @@ function firstDivergence()
             println("\n\n\nPrevious:\n")
             println("Original:\n", original_history)
             println("\nIterative:\n", iterative_history)
+            equivalent = false
             break
         else
             original_history = first(original_states).state.assignment
@@ -348,9 +340,16 @@ function firstDivergence()
         dequeue!(original_states)
         dequeue!(iterative_states)
     end
+    return equivalent
     # println(first(original_states).state.assignment == first(iterative_states).state.assignment)
 end
 firstDivergence()
+
+println(first(original_states).state.assignment, "\n")
+println(first(iterative_states).state.assignment, "\n")
+println(first(original_states).depth)
+dequeue!(original_states);
+dequeue!(iterative_states);
 
 println(last(original_states))
 println(first(original_states))
