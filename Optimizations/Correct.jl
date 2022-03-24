@@ -201,6 +201,7 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
             pop!(stk)
             justPopped = true
             enteredFor = true
+            println("enteredFor continue")
             continue
         else
             enteredFor = false
@@ -215,12 +216,17 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
             justPopped = true
             enteredFor = true
             # continue <- was this, but with iterative we can break
+            println("isnothing continue")
             continue
         elseif mrv == 0
             # An element has no allowable assignment, so we must backtrack.
             pop!(stk)
             justPopped = true
             enteredFor = true
+            println("mrv == 0 continue")
+            println(currentState.x)
+            println(currentState.depth)
+            unassign_elem!(state, currentState.depth - 1, Val{currentState.c}, currentState.x) # may need to calc these - print them out before unassign_elem - may need to make sure we dont get a depth of 0 or something
             continue
         end
 
@@ -235,26 +241,40 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
             justPopped = false
         end
         for y in first(stk).iterator
+            println("y: ", y)
+            println("depth: ", currentState.depth)
             enteredFor = true
             if y == 1
                 currentState.c = c
                 currentState.x = x
             end
+            println("x: ", currentState.x)
             t = assign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x, y)
-            enqueue!(iterative_states, CaptureState(deepcopy(state), y, currentState.depth, currentState.c, currentState.x, t))
+            enqueue!(iterative_states, CaptureState(deepcopy(state), y, depth, c, x, t))
+            if (currentState.depth == 12 && (y == 6 || y == 7 || y == 8 || y == 9)) || (currentState.depth == 13 && y == 1)
+                println("assign_elem: ", t)
+                println("state: ", state)
+                println("depth: ", currentState.depth)
+                println("Val: ", Val{currentState.c})
+                println("x: ", currentState.x)
+                println("y: ", y)
+            end
             if t
                 # && return true
                 if currentState.ret
                     pop!(stk)
                     currentState = first(stk)
                     currentState.ret = true
+                    println("ret = true break (inside assign_elem)")
                     break
                 end
                 newstate = IterativeBacktrackingState(c, x, p, false, Iterators.Stateful(p), currentState.depth + 1)
                 push!(stk, newstate)
+                println("break after push (inside assign_elem)")
                 break
             end
             unassign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x)
+            println("unassign_elem")
             # assigned = false
             if y == length(first(stk).parts)
                 pop!(stk)
@@ -265,6 +285,9 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
         if currentState.depth == 1 && currentState.ret
             return currentState.ret
         end
+        # if currentState.depth == 15
+        #     return false
+        # end
     end
     return false
 end
@@ -288,45 +311,9 @@ function compareFunctions(acset1, acset2)
     end
 end
 
-Base.copy
-
 # Trying to figure out this tricky bug
 original_states = Queue{Any}()
 iterative_states = Queue{Any}()
-
-large1 = apex(product(a_sparse_three, add_loops(a_sparse_four)))
-large2 = apex(product(a_sparse_four, add_loops(a_sparse_five)))
-large3 = apex(product(a_sparse_five, add_loops(a_sparse_six)))
-large4 = apex(product(a_sparse_six, add_loops(a_sparse_six2)))
-large5 = apex(product(a_sparse_six2, add_loops(a_sparse_seven)))
-large6 = apex(product(a_sparse_seven, add_loops(a_sparse_eight)))
-large7 = apex(product(a_sparse_eight, add_loops(a_sparse_eight2)))
-
-homomorphism(large5, add_loops(large2))
-ihomomorphism(large5, add_loops(large2))
-
-homomorphism(large6, add_loops(large3))
-ihomomorphism(large6, add_loops(large3))
-
-homomorphism(large7, add_loops(large4))
-ihomomorphism(large7, add_loops(large4))
-
-homomorphism(large1, add_loops(a_sparse_three))
-ihomomorphism(large1, add_loops(a_sparse_three))
-
-
-
-
-original_states = Queue{Any}()
-iterative_states = Queue{Any}()
-
-# this one
-homomorphism(large4, add_loops(large1))
-ihomomorphism(large4, add_loops(large1))
-########################################
-
-length(original_states)
-length(iterative_states)
 
 function firstDivergence()
     original_history::Any = nothing
@@ -340,7 +327,7 @@ function firstDivergence()
         println(first(original_states).state.assignment.E)
         println(first(iterative_states).state.assignment.E)
         println(first(original_states).depth)
-        if (first(original_states).depth != first(iterative_states).depth)
+        if (first(original_states).state != first(iterative_states).state)
             println("\n\n\nDivergence encountered.\nOriginal:\ny: ", first(original_states).y, "\ndepth: ", first(original_states).depth, "t: ", first(original_states).t)
             println("Iterative:\ny: ", first(iterative_states).y, "\ndepth: ", first(iterative_states).depth, "t: ", first(iterative_states).t)
             println("\nOriginal:\n", first(original_states).state.assignment)
@@ -358,6 +345,54 @@ function firstDivergence()
     end
     # println(first(original_states).state.assignment == first(iterative_states).state.assignment)
 end
+
+large1 = apex(product(a_sparse_three, add_loops(a_sparse_four)))
+large2 = apex(product(a_sparse_four, add_loops(a_sparse_five)))
+large3 = apex(product(a_sparse_five, add_loops(a_sparse_six)))
+large4 = apex(product(a_sparse_six, add_loops(a_sparse_six2)))
+large5 = apex(product(a_sparse_six2, add_loops(a_sparse_seven)))
+large6 = apex(product(a_sparse_seven, add_loops(a_sparse_eight)))
+large7 = apex(product(a_sparse_eight, add_loops(a_sparse_eight2)))
+
+original_states = Queue{Any}()
+iterative_states = Queue{Any}()
+ans1 = homomorphism(large5, add_loops(large2))
+ans2 = ihomomorphism(large5, add_loops(large2))
+ans1 == ans2
+
+original_states = Queue{Any}()
+iterative_states = Queue{Any}()
+ans1 = homomorphism(large6, add_loops(large3))
+ans2 = ihomomorphism(large6, add_loops(large3))
+ans1 == ans2
+
+original_states = Queue{Any}()
+iterative_states = Queue{Any}()
+ans1 = homomorphism(large7, add_loops(large4))
+ans2 = ihomomorphism(large7, add_loops(large4))
+ans1 == ans2
+
+original_states = Queue{Any}()
+iterative_states = Queue{Any}()
+ans1 = homomorphism(large1, add_loops(a_sparse_three))
+ans2 = ihomomorphism(large1, add_loops(a_sparse_three))
+ans1 == ans2
+
+
+
+original_states = Queue{Any}()
+iterative_states = Queue{Any}()
+
+# this one
+ans1 = homomorphism(large4, add_loops(large1))
+ans2 = ihomomorphism(large4, add_loops(large1))
+ans1 == ans2
+########################################
+
+length(original_states)
+length(iterative_states)
+
+
 firstDivergence()
 
 println(last(original_states))
