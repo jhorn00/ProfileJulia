@@ -8,6 +8,7 @@ mutable struct CaptureState
     depth::Int64
     c::Any
     x::Any
+    t::Any
 end
 
 """ Internal state for backtracking search for ACSet homomorphisms.
@@ -127,8 +128,9 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
     # Attempt all assignments of the chosen element.
     Y = state.codom
     for y in parts(Y, c)
-        enqueue!(original_states, CaptureState(state, y, depth, c, x))
-        assign_elem!(state, depth, Val{c}, x, y) &&
+        t = assign_elem!(state, depth, Val{c}, x, y)
+        enqueue!(original_states, CaptureState(deepcopy(state), y, depth, c, x, t))
+        t &&
             backtracking_search(f, state, depth + 1) &&
             return true
         unassign_elem!(state, depth, Val{c}, x)
@@ -238,8 +240,9 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
                 currentState.c = c
                 currentState.x = x
             end
-            enqueue!(iterative_states, CaptureState(state, y, currentState.depth, currentState.c, currentState.x))
-            if assign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x, y)
+            t = assign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x, y)
+            enqueue!(iterative_states, CaptureState(deepcopy(state), y, currentState.depth, currentState.c, currentState.x, t))
+            if t
                 # && return true
                 if currentState.ret
                     pop!(stk)
@@ -285,7 +288,7 @@ function compareFunctions(acset1, acset2)
     end
 end
 
-
+Base.copy
 
 # Trying to figure out this tricky bug
 original_states = Queue{Any}()
@@ -330,11 +333,16 @@ function firstDivergence()
     iterative_history::Any = nothing
     while !isempty(original_states) && !isempty(iterative_states)
         println("runs")
-        println(first(original_states).state.assignment == first(iterative_states).state.assignment)
+        println(first(original_states).y)
+        println(first(iterative_states).y)
+        println(first(original_states).state.assignment.V)
+        println(first(iterative_states).state.assignment.V)
+        println(first(original_states).state.assignment.E)
+        println(first(iterative_states).state.assignment.E)
         println(first(original_states).depth)
         if (first(original_states).depth != first(iterative_states).depth)
-            println("\n\n\nDivergence encountered.\nOriginal:\ny: ", first(original_states).y, "\ndepth: ", first(original_states).depth)
-            println("Iterative:\ny: ", first(iterative_states).y, "\ndepth: ", first(iterative_states).depth)
+            println("\n\n\nDivergence encountered.\nOriginal:\ny: ", first(original_states).y, "\ndepth: ", first(original_states).depth, "t: ", first(original_states).t)
+            println("Iterative:\ny: ", first(iterative_states).y, "\ndepth: ", first(iterative_states).depth, "t: ", first(iterative_states).t)
             println("\nOriginal:\n", first(original_states).state.assignment)
             println("\nIterative:\n", first(iterative_states).state.assignment)
             println("\n\n\nPrevious:\n")

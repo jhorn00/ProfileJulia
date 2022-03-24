@@ -196,13 +196,13 @@ end
 
 # Recursive backtracking_search function
 function backtracking_search(f, state::BacktrackingState, depth::Int)
-    if depth == 8
-        return true
-    end
+    # if depth == 15
+    #     return true
+    # end
     println("runs")
     # Choose the next unassigned element.
     mrv, mrv_elem = find_mrv_elem(state, depth)
-    println("mrv: ", mrv)
+    # println("mrv: ", mrv)
     if isnothing(mrv_elem)
         println("isnothing")
         # No unassigned elements remain, so we have a complete assignment.
@@ -217,7 +217,13 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
     Y = state.codom
     for y in parts(Y, c)
         println("y: ", y)
+        println("x: ", x)
         println("depth: ", depth)
+        if y == 1
+            println(state.assignment)
+        end
+        # println(state.assignment.V)
+        # println(state.assignment.E)
         # println("length p: ", parts(Y, c))
         # if depth == 16
         #     println("State:\n", state, "\n")
@@ -229,11 +235,18 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
         # println("c: ", c, " x: ", x)
         # println("currentState.c: ", c, " currentState.x: ", x)
 
-        # if depth > 5 && depth < 13
-        println("state: ", state)
-        # end
+        t = assign_elem!(state, depth, Val{c}, x, y)
+
+        if (depth == 12 && (y == 6 || y == 7 || y == 8 || y == 9)) || (depth == 13 && y == 1)
+            println("assign_elem: ", t)
+            println("state: ", state)
+            println("depth: ", depth)
+            println("Val: ", Val{c})
+            println("x: ", x)
+            println("y: ", y)
+        end
         # println(state.assignment)
-        if assign_elem!(state, depth, Val{c}, x, y)
+        if t
             println("assign_elem")
             if backtracking_search(f, state, depth + 1)
                 println("ret is true")
@@ -242,11 +255,9 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
         end
         unassign_elem!(state, depth, Val{c}, x)
         println("unassign_elem")
+        println(x)
+        println(depth)
     end
-    println("outer false")
-    # if depth == 9
-    #     return true
-    # end
     return false
 end
 

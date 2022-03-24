@@ -191,57 +191,38 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
     push!(stk, istate)
     justPopped = false
     enteredFor = true
-    assigned = false
     while !isempty(stk)
-        println("runs")
         currentState = first(stk)
-        # if currentState.depth == 20
-        #     break
-        # end
         if !enteredFor
-            # println("popped for")
-            # if assigned
-            #     assigned = false
-            #     unassign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x)
-            # end
             pop!(stk)
             justPopped = true
             enteredFor = true
+            println("enteredFor continue")
             continue
         else
             enteredFor = false
         end
 
-
         # Choose the next unassigned element.
         mrv, mrv_elem = find_mrv_elem(state, currentState.depth)
-        # println("mrv: ", mrv)
         if isnothing(mrv_elem)
-            println("isnothing")
-            # if assigned
-            #     assigned = false
-            #     unassign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x)
-            # end
             # No unassigned elements remain, so we have a complete assignment.
             currentState.ret = f(ACSetTransformation(state.assignment, state.dom, state.codom))
-            # println("popped nothing")
             pop!(stk)
             justPopped = true
             enteredFor = true
+            # continue <- was this, but with iterative we can break
+            println("isnothing continue")
             continue
         elseif mrv == 0
-            println("mrv == 0")
             # An element has no allowable assignment, so we must backtrack.
-            # println("popped mrv")
-            # if assigned
-            #     assigned = false
-            #     unassign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x)
-            # end
-            println("unassign_elem")
-            unassign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x)
             pop!(stk)
             justPopped = true
             enteredFor = true
+            println("mrv == 0 continue")
+            println(currentState.x)
+            println(currentState.depth)
+            unassign_elem!(state, currentState.depth - 1, Val{currentState.c}, currentState.x) # may need to calc these - print them out before unassign_elem - may need to make sure we dont get a depth of 0 or something
             continue
         end
 
@@ -256,41 +237,40 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
             justPopped = false
         end
         for y in first(stk).iterator
+            println("y: ", y)
+            println("depth: ", currentState.depth)
             enteredFor = true
             if y == 1
                 currentState.c = c
                 currentState.x = x
             end
-            println("y: ", y)
-            println("depth: ", currentState.depth)
-            # println("length p: ", p)
-            # println("currentState.c: ", currentState.c, " currentState.x: ", currentState.x)
-
-            # if currentState.depth > 5 && currentState.depth < 13
-            println("state: ", state)
-            # end
-            # println(state.assignment)
-            if assign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x, y)
-                # assigned = true
-                println("assign_elem")
+            println("x: ", currentState.x)
+            t = assign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x, y)
+            if (currentState.depth == 12 && (y == 6 || y == 7 || y == 8 || y == 9)) || (currentState.depth == 13 && y == 1)
+                println("assign_elem: ", t)
+                println("state: ", state)
+                println("depth: ", currentState.depth)
+                println("Val: ", Val{currentState.c})
+                println("x: ", currentState.x)
+                println("y: ", y)
+            end
+            if t
                 # && return true
                 if currentState.ret
-                    println("ret is true")
-                    # println("popped true")
-                    pop!(stk)#################################################################maybe here too
+                    pop!(stk)
                     currentState = first(stk)
                     currentState.ret = true
-                    # didSomething = true
+                    println("ret = true break (inside assign_elem)")
                     break
                 end
                 newstate = IterativeBacktrackingState(c, x, p, false, Iterators.Stateful(p), currentState.depth + 1)
                 push!(stk, newstate)
-                println("pushed")
+                println("break after push (inside assign_elem)")
                 break
             end
             unassign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x)
-            # assigned = false
             println("unassign_elem")
+            # assigned = false
             if y == length(first(stk).parts)
                 pop!(stk)
                 justPopped = true
@@ -300,15 +280,14 @@ function iterative_backtracking_search(f, state::BacktrackingState, depth::Int)
         if currentState.depth == 1 && currentState.ret
             return currentState.ret
         end
-        if currentState.depth == 7
-            break
-        end
+        # if currentState.depth == 15
+        #     return false
+        # end
     end
-    println("outer false")
     return false
 end
 
-gtoh = homomorphism(g, h_codom)
+# gtoh = homomorphism(g, h_codom)
 
 large1 = apex(product(a_sparse_three, add_loops(a_sparse_four)))
 large2 = apex(product(a_sparse_four, add_loops(a_sparse_five)))
@@ -318,21 +297,21 @@ large5 = apex(product(a_sparse_six2, add_loops(a_sparse_seven)))
 large6 = apex(product(a_sparse_seven, add_loops(a_sparse_eight)))
 large7 = apex(product(a_sparse_eight, add_loops(a_sparse_eight2)))
 
-homomorphism(large1, add_loops(a_sparse_five))
-homomorphism(large2, add_loops(a_sparse_three))
-homomorphism(large3, add_loops(a_sparse_seven))
-h = homomorphism(large4, add_loops(a_sparse_eight))
-draw(h)
+# homomorphism(large1, add_loops(a_sparse_five))
+# homomorphism(large2, add_loops(a_sparse_three))
+# homomorphism(large3, add_loops(a_sparse_seven))
+# h = homomorphism(large4, add_loops(a_sparse_eight))
+# draw(h)
 
-homomorphism(large5, add_loops(large2))
-homomorphism(large6, add_loops(large3))
-homomorphism(large7, add_loops(large4))
-homomorphism(large1, add_loops(a_sparse_three))
-homomorphism(large2, add_loops(a_sparse_six))
-homomorphism(large3, add_loops(a_sparse_eight))
+# homomorphism(large5, add_loops(large2))
+# homomorphism(large6, add_loops(large3))
+# homomorphism(large7, add_loops(large4))
+# homomorphism(large1, add_loops(a_sparse_three))
+# homomorphism(large2, add_loops(a_sparse_six))
+# homomorphism(large3, add_loops(a_sparse_eight))
 homomorphism(large4, add_loops(large1)) # THIS ONE BREAKS - When looking at it the values are wrong for the depth
-homomorphism(large5, add_loops(large3))
-homomorphism(a_sparse_eight, add_loops(a_sparse_seven))
-homomorphism(a_sparse_eight2, add_loops(a_sparse_six))
-homomorphism(a_sparse_five, add_loops(a_sparse_three))
-homomorphism(a_sparse_six2, add_loops(a_sparse_four))
+# homomorphism(large5, add_loops(large3))
+# homomorphism(a_sparse_eight, add_loops(a_sparse_seven))
+# homomorphism(a_sparse_eight2, add_loops(a_sparse_six))
+# homomorphism(a_sparse_five, add_loops(a_sparse_three))
+# homomorphism(a_sparse_six2, add_loops(a_sparse_four))
