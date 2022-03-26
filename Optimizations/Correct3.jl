@@ -2,27 +2,13 @@
 include("../Includes/iterativeBoilerplate.jl")
 using DataStructures
 
-mutable struct CaptureState
-    state::BacktrackingState
-    y::Any
-    depth::Int64
-    c::Any
-    x::Any
-end
-
 """ Internal state for backtracking search for ACSet homomorphisms.
 """
 mutable struct IterativeBacktrackingState
     # needed to resume
-    c::Symbol
     x::Int64
-    parts::Any
-    ret::Bool
-    iterator::Iterators.Stateful
-    depth::Int64
+    iterator::Base.Iterators.Stateful{UnitRange{Int64},Union{Nothing,Tuple{Int64,Int64}}}
 end
-
-stk = Stack{IterativeBacktrackingState}()
 
 ihomomorphism(X::ACSet, Y::ACSet; alg=BacktrackingSearch(), kw...) =
     ihomomorphism(X, Y, alg; kw...)
@@ -127,7 +113,6 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
     # Attempt all assignments of the chosen element.
     Y = state.codom
     for y in parts(Y, c)
-        enqueue!(original_states, CaptureState(state, y, depth, c, x))
         assign_elem!(state, depth, Val{c}, x, y) &&
             backtracking_search(f, state, depth + 1) &&
             return true
@@ -175,9 +160,12 @@ function iterative_backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
 end
 
 function iterative_backtracking_search(f, state::BacktrackingState)
+    # Make Linked List to use as stack.
+    ll = MutableLinkedList{IterativeBacktrackingState}()
     ##################################### HANDLE FIRST CASE #####################################
     # Choose the next unassigned element.
-    mrv, mrv_elem = find_mrv_elem(state, 1)
+    depth = 1
+    mrv, mrv_elem = find_mrv_elem(state, depth)
     if isnothing(mrv_elem)
         # No unassigned elements remain, so we have a complete assignment.
         return f(ACSetTransformation(state.assignment, state.dom, state.codom))
@@ -189,67 +177,58 @@ function iterative_backtracking_search(f, state::BacktrackingState)
     c, x = mrv_elem
     Y = state.codom
     p = parts(Y, c)
-    istate = IterativeBacktrackingState(c, x, p, false, Iterators.Stateful(p), 1)
-    push!(stk, istate)
-    # Create tracker variables.
+    istate = IterativeBacktrackingState(x, Iterators.Stateful(p))
+    # println(typeof(istate.iterator))
+    # push!(stk, istate)
+    pushfirst!(ll, istate)
+    # Create tracker variable(s).
     justPopped = false
-    while !isempty(stk)
+    while !isempty(ll)
         # Get currentState based on stack.
-        currentState = first(stk)
+        currentState = first(ll)
         # Check what could help us skip additional commands first.
         # If the iterator is over, pop.
         if isempty(currentState.iterator)
-            pop!(stk)
+            popfirst!(ll)
+            depth = depth - 1
             justPopped = true
             continue
         end
-        # Choose the next unassigned element.
-        mrv, mrv_elem = find_mrv_elem(state, currentState.depth)
-        if isnothing(mrv_elem)
-            # No unassigned elements remain, so we have a complete assignment.
-            currentState.ret = f(ACSetTransformation(state.assignment, state.dom, state.codom))
-            return true
-        elseif mrv == 0
-            # An element has no allowable assignment, so we must backtrack.
-            pop!(stk)
-            justPopped = true
-            continue
-        end
-        # Values should be set if we are visiting this depth and state for the first time.
+        # Values should be set if the depth and state are being visited for the first time.
         if !justPopped
             c, x = mrv_elem
-            Y = state.codom
             p = parts(Y, c)
-            currentState.parts = p
             currentState.iterator = Iterators.Stateful(p)
+            currentState.x = x
         else
             justPopped = false
         end
         # Attempt all assignments of the chosen element.
-        for y in first(stk).iterator
-            # set correct c and x if we are entering under a new depth
-            if y == 1
-                currentState.c = c
-                currentState.x = x
-            end
-            enqueue!(iterative_states, CaptureState(state, y, currentState.depth, currentState.c, currentState.x))
-            if assign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x, y)
+        for y in first(ll).iterator
+            if assign_elem!(state, depth, Val{c}, currentState.x, y)
                 # && return true
-                if currentState.ret
-                    pop!(stk)
-                    currentState = first(stk)
-                    currentState.ret = true
-                    break
+                depth = depth + 1
+                mrv, mrv_elem = find_mrv_elem(state, depth)
+                if isnothing(mrv_elem)
+                    # No unassigned elements remain, so we have a complete assignment.
+                    if f(ACSetTransformation(state.assignment, state.dom, state.codom))
+                        return true
+                    else #pop and break
+                        depth = depth - 1
+                        unassign_elem!(state, depth, Val{c}, currentState.x)
+                        continue
+                    end
+                elseif mrv == 0 # pop and continue
+                    # An element has no allowable assignment, so we must backtrack.
+                    depth = depth - 1
+                    unassign_elem!(state, depth, Val{c}, currentState.x)
+                    continue
                 end
-                newstate = IterativeBacktrackingState(c, x, p, false, Iterators.Stateful(p), currentState.depth + 1)
-                push!(stk, newstate)
+                newstate = IterativeBacktrackingState(x, Iterators.Stateful(p))
+                pushfirst!(ll, newstate)
                 break
             end
-            unassign_elem!(state, currentState.depth, Val{currentState.c}, currentState.x)
-        end
-        # return false
-        if currentState.depth == 1 && currentState.ret
-            return currentState.ret
+            unassign_elem!(state, depth, Val{c}, currentState.x)
         end
     end
     return false
@@ -258,8 +237,19 @@ end
 # Compares the recursive and iterative solutions
 # To my knowledge the ACSetTransformation has only 3 values - James Horn
 function compareFunctions(acset1, acset2)
-    original = homomorphism(acset1, add_loops(acset2))
-    iterative = ihomomorphism(acset1, add_loops(acset2))
+    # Ideally this can resolve compilation/GC issues
+    ac2 = add_loops(acset2)
+    original = homomorphism(acset1, ac2)
+    iterative = ihomomorphism(acset1, ac2)
+    @time homomorphism(acset1, ac2)
+    @time ihomomorphism(acset1, ac2)
+    # homO = @benchmark homomorphism($acset1, $ac2)
+    # println(median(homO))
+    # homI = @benchmark ihomomorphism($acset1, $ac2)
+    # println(median(homI))
+    # reset_timer!(to::TimerOutput)
+    # original = @timeit to "recursive function" homomorphism(acset1, add_loops(acset2))
+    # iterative = @timeit to "iterative function" ihomomorphism(acset1, add_loops(acset2))
     println("\n==================\nComparison Results\n------------------")
     if original == iterative
         println("Equivalent\n==================\n")
@@ -274,12 +264,9 @@ function compareFunctions(acset1, acset2)
     end
 end
 
-
-
-# Trying to figure out this tricky bug
-original_states = Queue{Any}()
-iterative_states = Queue{Any}()
-
+# Unit tests
+numSamples = 100
+BenchmarkTools.DEFAULT_PARAMETERS.samples = numSamples
 large1 = apex(product(a_sparse_three, add_loops(a_sparse_four)))
 large2 = apex(product(a_sparse_four, add_loops(a_sparse_five)))
 large3 = apex(product(a_sparse_five, add_loops(a_sparse_six)))
@@ -288,98 +275,59 @@ large5 = apex(product(a_sparse_six2, add_loops(a_sparse_seven)))
 large6 = apex(product(a_sparse_seven, add_loops(a_sparse_eight)))
 large7 = apex(product(a_sparse_eight, add_loops(a_sparse_eight2)))
 
-homomorphism(large5, add_loops(large2))
-ihomomorphism(large5, add_loops(large2))
-
-homomorphism(large6, add_loops(large3))
-ihomomorphism(large6, add_loops(large3))
-
-homomorphism(large7, add_loops(large4))
-ihomomorphism(large7, add_loops(large4))
-
-homomorphism(large1, add_loops(a_sparse_three))
-ihomomorphism(large1, add_loops(a_sparse_three))
-
-
-Base.copy(s::BacktrackingState) = BacktrackingState(s.assignment, s.assignment_depth, s.inv_assignment, s.dom, s.codom)
-
-original_states = Queue{Any}()
-iterative_states = Queue{Any}()
-
-# this one
-homomorphism(large4, add_loops(large1))
-ihomomorphism(large4, add_loops(large1))
-########################################
-# it gets nothing in the stateful iterator sometimes
-
-length(original_states)
-length(iterative_states)
-
-function firstDivergence()
-    equivalent = true
-    original_history::Any = nothing
-    iterative_history::Any = nothing
-    while !isempty(original_states) && !isempty(iterative_states)
-        println("runs")
-        println(first(original_states).state.assignment == first(iterative_states).state.assignment)
-        println(first(original_states).depth)
-        if (first(original_states).depth != first(iterative_states).depth)
-            println("\n\n\nDivergence encountered.\nOriginal:\ny: ", first(original_states).y, "\ndepth: ", first(original_states).depth)
-            println("Iterative:\ny: ", first(iterative_states).y, "\ndepth: ", first(iterative_states).depth)
-            println("\nOriginal:\n", first(original_states).state.assignment)
-            println("\nIterative:\n", first(iterative_states).state.assignment)
-            println("\n\n\nPrevious:\n")
-            println("Original:\n", original_history)
-            println("\nIterative:\n", iterative_history)
-            equivalent = false
-            break
-        else
-            original_history = first(original_states).state.assignment
-            iterative_history = first(iterative_states).state.assignment
-        end
-        dequeue!(original_states)
-        dequeue!(iterative_states)
-    end
-    return equivalent
-    # println(first(original_states).state.assignment == first(iterative_states).state.assignment)
-end
-firstDivergence()
-
-println(first(original_states).state.assignment, "\n")
-println(first(iterative_states).state.assignment, "\n")
-println(first(original_states).depth)
-dequeue!(original_states);
-dequeue!(iterative_states);
-
-println(last(original_states))
-println(first(original_states))
-
-function firstDivergence()
-    equivalent = true
-    original_history::Any = nothing
-    iterative_history::Any = nothing
-    while !isempty(original_states) && !isempty(iterative_states)
-        println("runs")
-        println(first(original_states).state.assignment == first(iterative_states).state.assignment)
-        println(first(original_states).depth)
-        if (first(original_states).depth != first(iterative_states).depth)
-            println("\n\n\nDivergence encountered.\nOriginal:\ny: ", first(original_states).y, "\ndepth: ", first(original_states).depth)
-            println("Iterative:\ny: ", first(iterative_states).y, "\ndepth: ", first(iterative_states).depth)
-            println("\nOriginal:\n", first(original_states).state.assignment)
-            println("\nIterative:\n", first(iterative_states).state.assignment)
-            println("\n\n\nPrevious:\n")
-            println("Original:\n", original_history)
-            println("\nIterative:\n", iterative_history)
-            equivalent = false
-            break
-        else
-            original_history = first(original_states).state.assignment
-            iterative_history = first(iterative_states).state.assignment
-        end
-        dequeue!(original_states)
-        dequeue!(iterative_states)
-    end
-    return equivalent
-    # println(first(original_states).state.assignment == first(iterative_states).state.assignment)
-end
-firstDivergence()
+# 1
+compareFunctions(large1, large2)
+compareFunctions(large1, large3)
+compareFunctions(large1, large4)
+compareFunctions(large1, large5)
+compareFunctions(large1, large6)
+compareFunctions(large1, large7)
+#2
+compareFunctions(large2, large1)
+compareFunctions(large2, large3)
+compareFunctions(large2, large4)
+compareFunctions(large2, large5)
+compareFunctions(large2, large6)
+compareFunctions(large2, large7)
+#3
+compareFunctions(large3, large1)
+compareFunctions(large3, large2)
+compareFunctions(large3, large4)
+compareFunctions(large3, large5)
+compareFunctions(large3, large6)
+compareFunctions(large3, large7)
+#4
+compareFunctions(large4, large1)
+compareFunctions(large4, large2)
+compareFunctions(large4, large3)
+compareFunctions(large4, large5)
+compareFunctions(large4, large6)
+compareFunctions(large4, large7)
+#5
+compareFunctions(large5, large1)
+compareFunctions(large5, large2)
+compareFunctions(large5, large3)
+compareFunctions(large5, large4)
+compareFunctions(large5, large6)
+compareFunctions(large5, large7)
+#6
+compareFunctions(large6, large1)
+compareFunctions(large6, large2)
+compareFunctions(large6, large3)
+# The following comments take a long time to run.
+# compareFunctions(large6, large4)
+# compareFunctions(large6, large5)
+# compareFunctions(large6, large7)
+# homomorphism(large6, large4)
+# homomorphism(large6, large5)
+# homomorphism(large6, large7)
+# ihomomorphism(large6, large4)
+# ihomomorphism(large6, large5)
+# ihomomorphism(large6, large7)
+#7
+compareFunctions(large7, large1)
+compareFunctions(large7, large2)
+compareFunctions(large7, large3)
+compareFunctions(large7, large4)
+compareFunctions(large7, large5)
+compareFunctions(large7, large6)
