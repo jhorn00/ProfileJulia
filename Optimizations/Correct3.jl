@@ -178,31 +178,18 @@ function iterative_backtracking_search(f, state::BacktrackingState)
     Y = state.codom
     p = parts(Y, c)
     istate = IterativeBacktrackingState(x, Iterators.Stateful(p))
-    # println(typeof(istate.iterator))
-    # push!(stk, istate)
     pushfirst!(ll, istate)
     # Create tracker variable(s).
-    justPopped = false
     while !isempty(ll)
         # Get currentState based on stack.
         currentState = first(ll)
-        # Check what could help us skip additional commands first.
         # If the iterator is over, pop.
         if isempty(currentState.iterator)
             popfirst!(ll)
             depth = depth - 1
-            justPopped = true
             continue
         end
         # Values should be set if the depth and state are being visited for the first time.
-        if !justPopped
-            c, x = mrv_elem
-            p = parts(Y, c)
-            currentState.iterator = Iterators.Stateful(p)
-            currentState.x = x
-        else
-            justPopped = false
-        end
         # Attempt all assignments of the chosen element.
         for y in first(ll).iterator
             if assign_elem!(state, depth, Val{c}, currentState.x, y)
@@ -213,17 +200,19 @@ function iterative_backtracking_search(f, state::BacktrackingState)
                     # No unassigned elements remain, so we have a complete assignment.
                     if f(ACSetTransformation(state.assignment, state.dom, state.codom))
                         return true
-                    else #pop and break
+                    else
                         depth = depth - 1
                         unassign_elem!(state, depth, Val{c}, currentState.x)
                         continue
                     end
-                elseif mrv == 0 # pop and continue
+                elseif mrv == 0
                     # An element has no allowable assignment, so we must backtrack.
                     depth = depth - 1
                     unassign_elem!(state, depth, Val{c}, currentState.x)
                     continue
                 end
+                c, x = mrv_elem
+                p = parts(Y, c)
                 newstate = IterativeBacktrackingState(x, Iterators.Stateful(p))
                 pushfirst!(ll, newstate)
                 break
