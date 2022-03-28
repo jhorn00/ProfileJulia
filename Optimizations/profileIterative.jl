@@ -364,6 +364,15 @@ end
 show(to)
 reset_timer!(to::TimerOutput)
 
+"Lenient comparison operator for `struct`, both mutable and immutable (type with \\eqsim)."
+    @generated function ≂(x, y)
+        if !isempty(fieldnames(x)) && x == y
+            mapreduce(n -> :(x.$n == y.$n), (a,b)->:($a && $b), fieldnames(x))
+        else
+            :(x == y)
+        end
+    end
+
 function can_assign_elem(state::BacktrackingState, depth,
     ::Type{Val{c}}, x, y) where {c}
     # Although this method is nonmutating overall, we must temporarily mutate the
@@ -372,11 +381,9 @@ function can_assign_elem(state::BacktrackingState, depth,
     # simultaneously (consider trying to assign a self-loop to an edge with
     # distinct vertices). Moreover, in schemas with non-trivial endomorphisms, we
     # must keep track of which elements we have visited to avoid looping forever.
-    println("before\n", state)
+    # println("before\n", state)
     ok = assign_elem!(state, depth, Val{c}, x, y)
-    println("middle\n", state)
     unassign_elem!(state, depth, Val{c}, x) # storing the state to revert is slower and consumes more memory
-    println("after\n", state)
     return ok
 end
 
@@ -388,13 +395,16 @@ function can_assign_elem(state::BacktrackingState, depth,
     # simultaneously (consider trying to assign a self-loop to an edge with
     # distinct vertices). Moreover, in schemas with non-trivial endomorphisms, we
     # must keep track of which elements we have visited to avoid looping forever.
-    oldAssign = state.assignment
-    oldDepth = state.assignment_depth
-    oldInv = state.inv_assignment
+    oldAssign = deepcopy(state.assignment)
+    oldDepth = deepcopy(state.assignment_depth) # could need deepcopy
+    oldInv = deepcopy(state.inv_assignment)
     # println(state)
     ok = assign_elem!(state, depth, Val{c}, x, y)
     # println(state)
-    state = BacktrackingState(oldAssign, oldDepth, oldInv, state.dom, state.codom)
+    state.assignment = oldAssign
+    state.assignment_depth = oldDepth
+    state.inv_assignment = oldInv
+    # state = BacktrackingState(oldAssign, oldDepth, oldInv, state.dom, state.codom)
     # println(state)
     # unassign_elem!(state, depth, Val{c}, x) # storing the state to revert is slower and consumes more memory
     return ok
