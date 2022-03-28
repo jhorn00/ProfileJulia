@@ -102,7 +102,7 @@ end
 ####################################################################################################
 function backtracking_search(f, state::BacktrackingState, depth::Int)
     # Choose the next unassigned element.
-    mrv, mrv_elem = find_mrv_elem(state, depth)
+    mrv, mrv_elem = @timeit to "find_mrv_elem" find_mrv_elem(state, depth)
     if isnothing(mrv_elem)
         # No unassigned elements remain, so we have a complete assignment.
         return f(ACSetTransformation(state.assignment, state.dom, state.codom))
@@ -114,7 +114,8 @@ function backtracking_search(f, state::BacktrackingState, depth::Int)
     # Attempt all assignments of the chosen element.
     Y = state.codom
     for y in parts(Y, c)
-        assign_elem!(state, depth, Val{c}, x, y) &&
+        t = @timeit to "assign call" assign_elem!(state, depth, Val{c}, x, y)
+        t &&
             backtracking_search(f, state, depth + 1) &&
             return true
         unassign_elem!(state, depth, Val{c}, x)
@@ -127,25 +128,12 @@ function find_mrv_elem(state::BacktrackingState{S}, depth) where {S}
     Y = state.codom
     for c in ob(S), (x, y) in enumerate(state.assignment[c])
         y == 0 || continue
-        n = @timeit to "can_assign_elem" count(can_assign_elem(state, depth, Val{c}, x, y) for y in parts(Y, c))
+        n = count(can_assign_elem(state, depth, Val{c}, x, y) for y in parts(Y, c))
         if n < mrv
             mrv, mrv_elem = n, (c, x)
         end
     end
     (mrv, mrv_elem)
-end
-
-function can_assign_elem(state::BacktrackingState, depth,
-    ::Type{Val{c}}, x, y) where {c}
-    # Although this method is nonmutating overall, we must temporarily mutate the
-    # backtracking state, for several reasons. First, an assignment can be a
-    # consistent at each individual subpart but not consistent for all subparts
-    # simultaneously (consider trying to assign a self-loop to an edge with
-    # distinct vertices). Moreover, in schemas with non-trivial endomorphisms, we
-    # must keep track of which elements we have visited to avoid looping forever.
-    ok = @timeit to "assign_elem in can_assign_elem" assign_elem!(state, depth, Val{c}, x, y)
-    @timeit to "unassign_elem in can_assign_elem" unassign_elem!(state, depth, Val{c}, x) # storing the state to revert is slower and consumes more memory
-    return ok
 end
 
 """ Attempt to assign element (c,x) to (c,y) in the current assignment.
@@ -269,7 +257,7 @@ function iterative_backtracking_search(f, state::BacktrackingState)
     istate = IterativeBacktrackingState(x, Iterators.Stateful(p))
     pushfirst!(ll, istate)
     # Create tracker variable(s).
-    @timeit to "loop" while !isempty(ll)
+    while !isempty(ll)
         # Get currentState based on stack.
         currentState = first(ll)
         # If the iterator is over, pop.
@@ -280,41 +268,38 @@ function iterative_backtracking_search(f, state::BacktrackingState)
         end
         # Values should be set if the depth and state are being visited for the first time.
         # Attempt all assignments of the chosen element.
-        @timeit to "for loop" for y in first(ll).iterator
+        for y in currentState.iterator
             # I believe the time taken to run assign_elem is deceptively small.
             # find_mrv_elem, which takes the bulk of the process resources, makes multiple calls to it.
             # Therefore, speeding it up should give much better performance.
-            t = @timeit to "assign_elem" assign_elem!(state, depth, Val{c}, currentState.x, y)
-            if t
+            t = @timeit to "assign call" assign_elem!(state, depth, Val{c}, currentState.x, y)
+            @timeit to "if statement" if t
                 # && return true
                 depth = depth + 1
                 mrv, mrv_elem = @timeit to "find_mrv_elem" find_mrv_elem(state, depth)
                 # see if we can store these to run the function less - not possible
-                # println("mrv: ", mrv)
-                # println("mrv_elem: ", mrv)
-                # println("depth: ", depth)
                 if isnothing(mrv_elem)
                     # No unassigned elements remain, so we have a complete assignment.
                     if f(ACSetTransformation(state.assignment, state.dom, state.codom))
                         return true
                     else
                         depth = depth - 1
-                        @timeit to "unassign_elem" unassign_elem!(state, depth, Val{c}, currentState.x)
+                        unassign_elem!(state, depth, Val{c}, currentState.x)
                         continue
                     end
                 elseif mrv == 0
                     # An element has no allowable assignment, so we must backtrack.
                     depth = depth - 1
-                    @timeit to "unassign_elem" unassign_elem!(state, depth, Val{c}, currentState.x)
+                    unassign_elem!(state, depth, Val{c}, currentState.x)
                     continue
                 end
                 c, x = mrv_elem
                 p = parts(Y, c)
-                newstate = IterativeBacktrackingState(x, Iterators.Stateful(p))
-                pushfirst!(ll, newstate)
+                istate = IterativeBacktrackingState(x, Iterators.Stateful(p))
+                pushfirst!(ll, istate)
                 break
             end
-            @timeit to "unassign_elem" unassign_elem!(state, depth, Val{c}, currentState.x)
+            unassign_elem!(state, depth, Val{c}, currentState.x)
         end
     end
     return false
@@ -325,8 +310,10 @@ end
 function compareFunctions(acset1, acset2)
     # Ideally this can resolve compilation/GC issues
     ac2 = add_loops(acset2)
-    original = homomorphism(acset1, ac2)
+    original = @timeit to "original" homomorphism(acset1, ac2)
     iterative = @timeit to "iterative" ihomomorphism(acset1, ac2)
+    println(original)
+    println(iterative)
     # @time homomorphism(acset1, ac2)
     # @time ihomomorphism(acset1, ac2)
     # homO = @benchmark homomorphism($acset1, $ac2)
@@ -362,8 +349,78 @@ large6 = apex(product(a_sparse_seven, add_loops(a_sparse_eight)))
 large7 = apex(product(a_sparse_eight, add_loops(a_sparse_eight2)))
 
 compareFunctions(large1, large2)
+reset_timer!(to::TimerOutput);
+for n in 1:20 # number of vertices ranges from 1 to 20
+    for j in 1:3 # runs each 3 times
+        println(n)
+        component = path_graph(ReflexiveGraph, n) # generate path graph of size n
+        checkerboard = box_product(component, component) # generate grid graph based on the component graph
+        codom = add_loops(component) # add loops to the codomain
+        @time compareFunctions(checkerboard, component)
+        # @timeit to "original" homomorphism(checkerboard, codom) # generate homomorphism ***GRID -> PATH***
+        # @timeit to "iterative" ihomomorphism(checkerboard, codom) # generate homomorphism ***GRID -> PATH***
+    end
+end
+show(to)
+reset_timer!(to::TimerOutput)
+
+function can_assign_elem(state::BacktrackingState, depth,
+    ::Type{Val{c}}, x, y) where {c}
+    # Although this method is nonmutating overall, we must temporarily mutate the
+    # backtracking state, for several reasons. First, an assignment can be a
+    # consistent at each individual subpart but not consistent for all subparts
+    # simultaneously (consider trying to assign a self-loop to an edge with
+    # distinct vertices). Moreover, in schemas with non-trivial endomorphisms, we
+    # must keep track of which elements we have visited to avoid looping forever.
+    println("before\n", state)
+    ok = assign_elem!(state, depth, Val{c}, x, y)
+    println("middle\n", state)
+    unassign_elem!(state, depth, Val{c}, x) # storing the state to revert is slower and consumes more memory
+    println("after\n", state)
+    return ok
+end
+
+function can_assign_elem(state::BacktrackingState, depth,
+    ::Type{Val{c}}, x, y) where {c}
+    # Although this method is nonmutating overall, we must temporarily mutate the
+    # backtracking state, for several reasons. First, an assignment can be a
+    # consistent at each individual subpart but not consistent for all subparts
+    # simultaneously (consider trying to assign a self-loop to an edge with
+    # distinct vertices). Moreover, in schemas with non-trivial endomorphisms, we
+    # must keep track of which elements we have visited to avoid looping forever.
+    oldAssign = state.assignment
+    oldDepth = state.assignment_depth
+    oldInv = state.inv_assignment
+    # println(state)
+    ok = assign_elem!(state, depth, Val{c}, x, y)
+    # println(state)
+    state = BacktrackingState(oldAssign, oldDepth, oldInv, state.dom, state.codom)
+    # println(state)
+    # unassign_elem!(state, depth, Val{c}, x) # storing the state to revert is slower and consumes more memory
+    return ok
+end
+
+component = path_graph(ReflexiveGraph, 2) # generate path graph of size n
+checkerboard = box_product(component, component) # generate grid graph based on the component graph
+codom = add_loops(component) # add loops to the codomain
+# @time compareFunctions(checkerboard, component)
+homomorphism(checkerboard, codom) # generate homomorphism ***GRID -> PATH***
+ihomomorphism(checkerboard, codom) # generate homomorphism ***GRID -> PATH***
+
+
+compareFunctions(large1, large2)
 reset_timer!(to::TimerOutput)
 compareFunctions(large1, large2)
+show(to)
+
+compareFunctions(large6, large3)
+reset_timer!(to::TimerOutput)
+compareFunctions(large6, large3)
+show(to)
+
+compareFunctions(large7, large4)
+reset_timer!(to::TimerOutput)
+compareFunctions(large7, large4)
 show(to)
 
 # 1
@@ -409,12 +466,12 @@ compareFunctions(large6, large3)
 # compareFunctions(large6, large4)
 # compareFunctions(large6, large5)
 # compareFunctions(large6, large7)
-# homomorphism(large6, large4)
-# homomorphism(large6, large5)
-# homomorphism(large6, large7)
-# ihomomorphism(large6, large4)
-# ihomomorphism(large6, large5)
-# ihomomorphism(large6, large7)
+homomorphism(large6, add_loops(large4))
+homomorphism(large6, large5)
+homomorphism(large6, large7)
+ihomomorphism(large6, large4)
+ihomomorphism(large6, large5)
+ihomomorphism(large6, large7)
 #7
 compareFunctions(large7, large1)
 compareFunctions(large7, large2)

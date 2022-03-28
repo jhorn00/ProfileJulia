@@ -164,3 +164,16 @@ function iterative_backtracking_search(f, state::BacktrackingState)
     end
     return false
 end
+
+function can_assign_elem(state::BacktrackingState, depth,
+    ::Type{Val{c}}, x, y) where {c}
+    # Although this method is nonmutating overall, we must temporarily mutate the
+    # backtracking state, for several reasons. First, an assignment can be a
+    # consistent at each individual subpart but not consistent for all subparts
+    # simultaneously (consider trying to assign a self-loop to an edge with
+    # distinct vertices). Moreover, in schemas with non-trivial endomorphisms, we
+    # must keep track of which elements we have visited to avoid looping forever.
+    ok = assign_elem!(state, depth, Val{c}, x, y)
+    unassign_elem!(state, depth, Val{c}, x) # storing the state to revert is slower and consumes more memory
+    return ok
+end
