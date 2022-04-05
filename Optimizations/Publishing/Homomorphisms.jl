@@ -129,13 +129,38 @@ function c_identical()
     end
 end
 
-@present TheoryGraph(FreeSchema) begin
-    src::Hom(E, V)
-    tgt::Hom(E, V)
-    V::Ob
-    E::Ob
-end
+# import Base: inv
+# using Requires
 
+# using ...Present, ...CSetDataStructures, ...Theories
+
+# @present TheoryGraph(FreeSchema) begin
+#     E::Ob
+#     V::Ob
+#     src::Hom(E, V)
+#     tgt::Hom(E, V)
+# end
+
+# @present TheoryGraph(FreeSchema) begin
+#     E::Ob
+#     V::Ob
+#     tgt::Hom(E, V)
+#     src::Hom(E, V)
+# end
+
+# @present TheoryGraph(FreeSchema) begin
+#     V::Ob
+#     E::Ob
+#     src::Hom(E, V)
+#     tgt::Hom(E, V)
+# end
+
+# @present TheoryGraph(FreeSchema) begin
+#     V::Ob
+#     E::Ob
+#     tgt::Hom(E, V)
+#     src::Hom(E, V)
+# end
 
 # Tune and run
 tune!(SUITE);
