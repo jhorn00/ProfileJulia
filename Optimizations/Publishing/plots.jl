@@ -30,23 +30,29 @@ end
 scatter([x1], [y1], title="Autoplotted Graph Vertices", xlabel="Number of \"From\" Vertices", ylabel="Single Hom Calculation Time (ns)")
 savefig("autoVertex.png")
 
-# # Checkerboard to Path - BenchmarkTools
-# x = Int64[]
-# y = Float64[]
-# for n in 1:20
-#     for j in 1:5
-#         println(n)
-#         component = path_graph(ReflexiveGraph, n)
-#         checkerboard = box_product(component, component)
-#         codom = add_loops(component)
-#         checkH = @benchmark homomorphism($checkerboard, $codom)
-#         for_x = Array{Int64,1}(undef, length(checkH.times))
-#         fill!(for_x, n)
-#         append!(x, for_x)
-#         append!(y, checkH.times)
-#     end
-# end
-# scatter([x], [y], title = "Homomorphism Function", xlabel = "Graph Dimensions (Path Graph Vertex count)", ylabel = "Single Hom Calculation Time (ns)")
-# savefig("tempSur.png")
-# length(x)
-# length(y)
+# Checkerboard to Path - BenchmarkTools
+x = Int64[]
+y = Float64[]
+for n in 1:20
+    for j in 1:5
+        println(n)
+        component = path_graph(ReflexiveGraph, n)
+        checkerboard = box_product(component, component)
+        codom = add_loops(component)
+        checkH = @benchmark homomorphism($checkerboard, $codom)
+        for_x = Array{Int64,1}(undef, length(checkH.times))
+        fill!(for_x, n)
+        append!(x, for_x)
+        append!(y, checkH.times / 1000000000)
+        # codom = add_loops(checkerboard)
+        # checkH = @benchmark homomorphism($component, $codom)
+        # for_x = Array{Int64,1}(undef, length(checkH.times))
+        # fill!(for_x, n)
+        # append!(x, for_x)
+        # append!(y, checkH.times / 1000000)
+    end
+end
+scatter([x], [y], title = "Homomorphism Function", xlabel = "Graph Dimensions (Path Graph Vertex count)", ylabel = "Single Hom Calculation Time (seconds)", legend = false)
+savefig("HomGenPerformance.png")
+length(x)
+length(y)
