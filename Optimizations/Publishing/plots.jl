@@ -11,7 +11,7 @@ autoShuffle(fromGraphs, toGraphs, 20, 200)
 # autoGen(fromGraphs, 20, 50)
 fromGraphs
 toGraphs
-BenchmarkTools.DEFAULT_PARAMETERS.samples = 100
+BenchmarkTools.DEFAULT_PARAMETERS.samples = 1000
 
 if length(fromGraphs) != length(toGraphs)
     println("From and to lists should be the same size.")
@@ -52,7 +52,7 @@ for n in 1:20
         # append!(y, checkH.times / 1000000)
     end
 end
-scatter([x], [y], title = "Homomorphism Function", xlabel = "Graph Dimensions (Path Graph Vertex count)", ylabel = "Single Hom Calculation Time (seconds)", legend = false)
+scatter([x], [y], title="Homomorphism Function", xlabel="Graph Dimensions (Path Graph Vertex count)", ylabel="Single Hom Calculation Time (seconds)", legend=false)
 savefig("HomGenPerformance.png")
 length(x)
 length(y)
