@@ -52,7 +52,33 @@ for n in 1:20
         # append!(y, checkH.times / 1000000)
     end
 end
-scatter([x], [y], title="Homomorphism Function", xlabel="Graph Dimensions (Path Graph Vertex count)", ylabel="Single Hom Calculation Time (seconds)", legend=false)
+scatter([x], [y], title="Homomorphism Function (BenchmarkTools)", xlabel="Graph Dimensions (Path Graph Vertex count)", ylabel="Single Hom Calculation Time (seconds)", legend=false)
 savefig("HomGenPerformance.png")
 length(x)
 length(y)
+
+using TimerOutputs
+const to = TimerOutput()
+reset_timer!(to::TimerOutput)
+x = Int64[]
+y = Float64[]
+for n in 1:20
+    for j in 1:50
+        println(n)
+        component = path_graph(ReflexiveGraph, n)
+        checkerboard = box_product(component, component)
+        codom = add_loops(component)
+        reset_timer!(to::TimerOutput)
+        @timeit to "homomorphism" homomorphism(checkerboard, codom)
+        append!(x, n)
+        append!(y, TimerOutputs.time(to["homomorphism"]) / 1000000000)
+        # codom = add_loops(checkerboard)
+        # checkH = @benchmark homomorphism($component, $codom)
+        # for_x = Array{Int64,1}(undef, length(checkH.times))
+        # fill!(for_x, n)
+        # append!(x, for_x)
+        # append!(y, checkH.times / 1000000)
+    end
+end
+scatter([x], [y], title="Homomorphism Function (TimerOutputs)", xlabel="Graph Dimensions (Path Graph Vertex count)", ylabel="Single Hom Calculation Time (seconds)", legend=false)
+savefig("HomGenPerformanceTO.png")

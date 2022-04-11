@@ -94,7 +94,7 @@ function backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
     end
 
     # Start the main recursion for backtracking search.
-    backtracking_search(f, state, 1)
+    @timeit to "original backtracking_search" backtracking_search(f, state, 1)
 end
 
 ####################################################################################################
@@ -127,7 +127,7 @@ function find_mrv_elem(state::BacktrackingState{S}, depth) where {S}
     Y = state.codom
     for c in ob(S), (x, y) in enumerate(state.assignment[c])
         y == 0 || continue
-        n = @timeit to "can_assign_elem" count(can_assign_elem(state, depth, Val{c}, x, y) for y in parts(Y, c))
+        n = count(can_assign_elem(state, depth, Val{c}, x, y) for y in parts(Y, c))
         if n < mrv
             mrv, mrv_elem = n, (c, x)
         end
@@ -143,8 +143,8 @@ function can_assign_elem(state::BacktrackingState, depth,
     # simultaneously (consider trying to assign a self-loop to an edge with
     # distinct vertices). Moreover, in schemas with non-trivial endomorphisms, we
     # must keep track of which elements we have visited to avoid looping forever.
-    ok = @timeit to "assign_elem in can_assign_elem" assign_elem!(state, depth, Val{c}, x, y)
-    @timeit to "unassign_elem in can_assign_elem" unassign_elem!(state, depth, Val{c}, x) # storing the state to revert is slower and consumes more memory
+    ok = assign_elem!(state, depth, Val{c}, x, y)
+    unassign_elem!(state, depth, Val{c}, x) # storing the state to revert is slower and consumes more memory
     return ok
 end
 
@@ -245,7 +245,7 @@ function iterative_backtracking_search(f, X::StructACSet{S}, Y::StructACSet{S};
         end
     end
     # Start the main recursion for backtracking search.
-    iterative_backtracking_search(f, state)
+    @timeit to "iterative backtracking_search" iterative_backtracking_search(f, state)
 end
 
 function iterative_backtracking_search(f, state::BacktrackingState)
@@ -269,7 +269,7 @@ function iterative_backtracking_search(f, state::BacktrackingState)
     istate = IterativeBacktrackingState(x, Iterators.Stateful(p))
     pushfirst!(ll, istate)
     # Create tracker variable(s).
-    @timeit to "loop" while !isempty(ll)
+    while !isempty(ll)
         # Get currentState based on stack.
         currentState = first(ll)
         # If the iterator is over, pop.
@@ -280,15 +280,15 @@ function iterative_backtracking_search(f, state::BacktrackingState)
         end
         # Values should be set if the depth and state are being visited for the first time.
         # Attempt all assignments of the chosen element.
-        @timeit to "for loop" for y in first(ll).iterator
+        for y in first(ll).iterator
             # I believe the time taken to run assign_elem is deceptively small.
             # find_mrv_elem, which takes the bulk of the process resources, makes multiple calls to it.
             # Therefore, speeding it up should give much better performance.
-            t = @timeit to "assign_elem" assign_elem!(state, depth, Val{c}, currentState.x, y)
+            t = assign_elem!(state, depth, Val{c}, currentState.x, y)
             if t
                 # && return true
                 depth = depth + 1
-                mrv, mrv_elem = @timeit to "find_mrv_elem" find_mrv_elem(state, depth)
+                mrv, mrv_elem = find_mrv_elem(state, depth)
                 # see if we can store these to run the function less - not possible
                 # println("mrv: ", mrv)
                 # println("mrv_elem: ", mrv)
@@ -299,13 +299,13 @@ function iterative_backtracking_search(f, state::BacktrackingState)
                         return true
                     else
                         depth = depth - 1
-                        @timeit to "unassign_elem" unassign_elem!(state, depth, Val{c}, currentState.x)
+                        unassign_elem!(state, depth, Val{c}, currentState.x)
                         continue
                     end
                 elseif mrv == 0
                     # An element has no allowable assignment, so we must backtrack.
                     depth = depth - 1
-                    @timeit to "unassign_elem" unassign_elem!(state, depth, Val{c}, currentState.x)
+                    unassign_elem!(state, depth, Val{c}, currentState.x)
                     continue
                 end
                 c, x = mrv_elem
@@ -314,7 +314,7 @@ function iterative_backtracking_search(f, state::BacktrackingState)
                 pushfirst!(ll, newstate)
                 break
             end
-            @timeit to "unassign_elem" unassign_elem!(state, depth, Val{c}, currentState.x)
+            unassign_elem!(state, depth, Val{c}, currentState.x)
         end
     end
     return false
@@ -326,7 +326,7 @@ function compareFunctions(acset1, acset2)
     # Ideally this can resolve compilation/GC issues
     ac2 = add_loops(acset2)
     original = homomorphism(acset1, ac2)
-    iterative = @timeit to "iterative" ihomomorphism(acset1, ac2)
+    iterative = ihomomorphism(acset1, ac2)
     # @time homomorphism(acset1, ac2)
     # @time ihomomorphism(acset1, ac2)
     # homO = @benchmark homomorphism($acset1, $ac2)
